@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parity: live currency converter and calculator</title>
+<meta name="description" content="Convert between every world currency and run the maths behind it: scientific calculator, equation solver, and money tools.">
+<meta name="theme-color" content="#EDEDEA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Parity: live currency converter and calculator">
+<meta property="og:description" content="Live rates for every world currency, plus a scientific calculator, equation solver and money tools. Free, no sign-up.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23fff'/%3E%3Cpath d='M12 2 22 12 12 22 2 12Z M12 6.5 17.5 12 12 17.5 6.5 12Z' fill='none' stroke='%23000' stroke-width='1.4'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PARITY design tokens
+   Direction: "intaglio". The interface as a modern banknote.
+   Security-paper ground, engraved Didone figures, guilloché
+   rosette, ledger-mono data. Aubergine + copper accents.
+   ============================================================ */
+:root{
+  --paper:#EDEDEA;
+  --paper-2:#FFFFFF;
+  --paper-3:#E3E3DF;
+  --ink:#000000;
+  --ink-2:#484845;
+  --ink-3:#73736D;
+  --line:#D5D5D0;
+  --line-strong:#A6A6A0;
+  --accent:#000000;
+  --accent-fill:#000000;
+  --accent-on:#FFFFFF;
+  --accent-wash:#F1F1EE;
+  --copper:#484845;
+  --copper-bright:#73736D;
+  --teal:#484845;
+  --pos:#2E6B44;
+  --neg:#8E2C1E;
+  --hatch:repeating-linear-gradient(135deg,var(--ink) 0 2px,transparent 2px 5px);
+  --shadow-1:0 1px 2px rgba(0,0,0,.07);
+  --shadow-2:0 14px 34px -16px rgba(0,0,0,.38);
+  --r-sm:6px; --r-md:10px; --r-lg:16px;
+  --grain:.045;
+  color-scheme:light;
+}
+[data-theme="night"]{
+  --paper:#0A0A0A;
+  --paper-2:#151515;
+  --paper-3:#1F1F1F;
+  --ink:#FFFFFF;
+  --ink-2:#B3B3AF;
+  --ink-3:#87877F;
+  --line:#2B2B2B;
+  --line-strong:#434343;
+  --accent:#FFFFFF;
+  --accent-fill:#FFFFFF;
+  --accent-on:#000000;
+  --accent-wash:#1D1D1D;
+  --copper:#B3B3AF;
+  --copper-bright:#87877F;
+  --teal:#B3B3AF;
+  --pos:#6FBE88;
+  --neg:#E08D7D;
+  --shadow-1:0 1px 2px rgba(0,0,0,.5);
+  --shadow-2:0 18px 44px -20px rgba(0,0,0,.9);
+  --grain:.06;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  min-height:100dvh;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",system-ui,-apple-system,sans-serif;
+  font-size:16px;
+  line-height:1.55;
+  font-variant-numeric:tabular-nums;
+  transition:background-color .4s ease,color .4s ease;
+}
+/* security-paper grain */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  opacity:var(--grain);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+h1,h2,h3,h4{margin:0;font-weight:600;line-height:1.2}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+[hidden]{display:none !important}
+
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.didone{font-family:"Bodoni Moda","Didot","Bodoni MT",Georgia,serif}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- shell ---------- */
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px 72px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:flex;align-items:center;gap:16px;
+  padding:22px 0 18px;
+  border-bottom:1px solid var(--line-strong);
+  position:relative;
+}
+.masthead::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:1px;background:var(--line)}
+.mark{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:inherit}
+.mark .lozenge{
+  width:22px;height:22px;flex:none;align-self:center;color:var(--accent);
+}
+.mark .word{
+  font-family:"Bodoni Moda","Didot",Georgia,serif;
+  font-size:26px;font-weight:700;letter-spacing:.22em;line-height:1;
+}
+.mark .sub{display:none}
+@media(min-width:720px){
+  .mark .sub{display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+}
+.masthead-spacer{flex:1}
+.status{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;
+  color:var(--ink-2);text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:6px 12px;
+  background:var(--paper-2);min-height:34px;transition:border-color .2s,color .2s;
+}
+button.status:hover{border-color:var(--ink);color:var(--ink)}
+button.status:active{transform:scale(.97)}
+.status[data-state="loading"]{cursor:progress}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);flex:none}
+.status[data-state="live"] .dot{background:var(--pos);box-shadow:0 0 0 0 color-mix(in srgb,var(--pos) 60%,transparent);animation:pulse 2.6s infinite}
+.status[data-state="offline"] .dot{background:var(--ink-3)}
+.status[data-state="loading"] .dot{background:var(--ink-3);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 0%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.icon-btn{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:50%;
+  border:1px solid var(--line);background:var(--paper-2);color:var(--ink-2);
+  transition:color .2s,border-color .2s,transform .2s;
+}
+.icon-btn:hover{color:var(--accent);border-color:var(--line-strong)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn svg{width:20px;height:20px}
+
+/* ---------- view switch ---------- */
+.switch{
+  display:flex;gap:4px;margin:26px 0 20px;
+  border:1px solid var(--line-strong);border-radius:999px;padding:4px;
+  background:var(--paper-2);width:max-content;max-width:100%;
+  box-shadow:var(--shadow-1);
+}
+.switch button{
+  padding:10px 22px;border-radius:999px;min-height:44px;
+  font-size:14px;font-weight:600;letter-spacing:.02em;color:var(--ink-2);
+  transition:background .25s,color .25s;
+}
+.switch button[aria-selected="true"]{background:var(--accent-fill);color:var(--accent-on)}
+.switch button:not([aria-selected="true"]):hover{color:var(--ink)}
+
+/* ---------- banknote sheet ---------- */
+.sheet{
+  position:relative;
+  background:var(--paper-2);
+  border:1px solid var(--line-strong);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-2);
+  overflow:hidden;
+}
+.sheet::after{
+  content:"";position:absolute;inset:7px;border:1px solid var(--line);
+  border-radius:calc(var(--r-lg) - 5px);pointer-events:none;
+}
+.guilloche{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.guilloche path{fill:none;stroke:var(--ink);stroke-width:.5;opacity:.13}
+.guilloche path.b{stroke:var(--ink);opacity:.07}
+.sheet-inner{position:relative;z-index:2;padding:28px 22px 0}
+@media(min-width:720px){.sheet-inner{padding:38px 40px 0}}
+
+/* ---------- amount fields ---------- */
+.field{padding:4px 0 22px}
+.field ~ .field{border-top:1px dashed var(--line);padding-top:22px}
+.field-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.field-row{display:flex;align-items:center;gap:14px;flex-wrap:nowrap}
+
+.ccy-btn{
+  display:flex;align-items:center;gap:10px;flex:none;
+  min-height:56px;padding:8px 12px 8px 8px;border-radius:var(--r-md);
+  border:1px solid var(--line);background:var(--paper);
+  transition:border-color .2s,background .2s;
+}
+.ccy-btn:hover{border-color:var(--line-strong)}
+.coin{
+  width:40px;height:40px;flex:none;border-radius:9px;display:grid;place-items:center;
+  background:none;color:var(--ink);
+  font-family:"Bodoni Moda",Georgia,serif;font-size:19px;font-weight:700;line-height:1;
+  border:1px solid var(--line-strong);
+}
+.ccy-btn .coin{border-color:var(--ink);box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 3px var(--line)}
+.ccy-meta{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;min-width:0}
+.ccy-code{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;letter-spacing:.06em}
+.ccy-name{font-size:11px;color:var(--ink-3);max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccy-btn .chev{width:16px;height:16px;color:var(--ink-3);flex:none;margin-left:auto}
+
+.amount-in,.amount-out{
+  flex:1;min-width:0;width:100%;
+  font-family:"Bodoni Moda","Didot",Georgia,serif;
+  font-size:clamp(30px,8.5vw,54px);
+  font-weight:500;line-height:1.05;text-align:right;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+}
+.amount-in{background:none;border:0;padding:4px 2px;color:var(--ink)}
+.amount-in::placeholder{color:var(--ink-3);opacity:.5}
+.amount-in:focus{outline:none}
+.field:focus-within .field-head .eyebrow{color:var(--accent)}
+.amount-out{color:var(--accent);display:block;padding:4px 2px;overflow:hidden;text-overflow:ellipsis}
+
+.swap-rail{position:relative;height:0}
+.swap{
+  position:absolute;right:0;top:-24px;
+  width:48px;height:48px;border-radius:50%;
+  border:1px solid var(--line-strong);background:var(--paper-2);color:var(--accent);
+  display:grid;place-items:center;box-shadow:var(--shadow-1);
+  transition:transform .45s cubic-bezier(.2,.9,.3,1.4),border-color .2s;
+}
+.swap:hover{border-color:var(--accent)}
+.swap svg{width:20px;height:20px}
+.swap.spin{transform:rotate(180deg)}
+
+.rate-line{
+  display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;
+  padding:16px 0;border-top:1px dashed var(--line);
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-2);
+}
+.rate-line b{color:var(--ink);font-weight:600}
+.inverse{color:var(--ink-3)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:20px}
+.chip{
+  min-height:38px;padding:7px 14px;border-radius:999px;
+  border:1px solid var(--line);background:var(--paper);
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);
+  transition:border-color .18s,color .18s,background .18s;
+}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.ghost{border-style:dashed}
+
+.serial{
+  margin:0 -22px;padding:12px 22px;
+  border-top:1px solid var(--line-strong);
+  background:var(--paper-3);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+@media(min-width:720px){.serial{margin:0 -40px;padding:12px 40px}}
+
+.delta{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--ink-2);
+}
+.delta.up{color:var(--pos);border-color:color-mix(in srgb,var(--pos) 40%,var(--line))}
+.delta.down{color:var(--neg);border-color:color-mix(in srgb,var(--neg) 40%,var(--line))}
+.spark{width:132px;height:34px;display:block;flex:none;margin-left:auto}
+.spark path{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-linejoin:round}
+.spark .base{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.spark circle{fill:var(--ink)}
+@keyframes tick{from{background:var(--accent-wash)}to{background:transparent}}
+.amount-out.tick{animation:tick 1s ease-out;border-radius:6px}
+
+/* ---------- popular strip ---------- */
+.strip{margin-top:26px}
+.strip-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.strip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pair{
+  text-align:left;padding:12px 14px;border-radius:var(--r-md);
+  border:1px solid var(--line);background:var(--paper-2);
+  transition:border-color .18s,transform .18s;
+}
+.pair:hover{border-color:var(--accent);transform:translateY(-2px)}
+.pair .p-code{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;color:var(--ink-3)}
+.pair .p-val{font-family:"Bodoni Moda",Georgia,serif;font-size:22px;font-weight:500;margin-top:2px}
+
+/* ---------- currency picker ---------- */
+.picker-back{position:fixed;inset:0;z-index:60;background:rgba(20,26,22,.5);background:color-mix(in srgb,var(--ink) 42%,transparent);backdrop-filter:blur(3px);display:grid;place-items:end center;padding:0}
+@media(min-width:720px){.picker-back{place-items:center;padding:24px}}
+.picker{
+  width:100%;max-width:520px;max-height:88dvh;display:flex;flex-direction:column;
+  background:var(--paper-2);border:1px solid var(--line-strong);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:var(--shadow-2);
+  animation:rise .28s cubic-bezier(.2,.8,.3,1);
+}
+@media(min-width:720px){.picker{border-radius:var(--r-lg);max-height:76dvh}}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.picker-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.search{
+  flex:1;display:flex;align-items:center;gap:10px;
+  border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper);
+  padding:0 12px;min-height:46px;
+}
+.search svg{width:17px;height:17px;color:var(--ink-3);flex:none}
+.search input{flex:1;border:0;background:none;min-width:0;padding:12px 0;font-size:16px}
+.search input:focus{outline:none}
+.picker-list{overflow-y:auto;overscroll-behavior:contain;padding:6px 0 12px;flex:1}
+.group-label{padding:12px 18px 6px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);position:sticky;top:0;background:var(--paper-2);z-index:1}
+.opt{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:9px 18px;min-height:52px;transition:background .12s;
+}
+.opt:hover,.opt.active{background:var(--accent-wash)}
+.opt .coin{width:34px;height:34px;font-size:16px;border-radius:8px}
+.opt-code{font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:600;letter-spacing:.05em}
+.opt-name{font-size:12.5px;color:var(--ink-3)}
+.opt .tick{margin-left:auto;width:16px;height:16px;color:var(--accent)}
+.empty{padding:36px 20px;text-align:center;color:var(--ink-3);font-size:14px}
+
+/* ---------- calculator ---------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line-strong);margin-bottom:0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{
+  padding:14px 16px;min-height:48px;white-space:nowrap;
+  font-size:13.5px;font-weight:600;color:var(--ink-3);
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+
+.pane{padding:22px 0 6px}
+.calc-grid{display:grid;gap:20px}
+@media(min-width:900px){.calc-grid{grid-template-columns:1fr 264px}}
+
+.display{
+  border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper);
+  padding:16px 18px;min-height:118px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+}
+.display-expr{
+  font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--ink-2);
+  word-break:break-all;min-height:24px;text-align:right;
+}
+.display-expr .caret{display:inline-block;width:1.5px;height:1.05em;background:var(--accent);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.display-out{
+  font-family:"Bodoni Moda",Georgia,serif;font-size:clamp(26px,6vw,40px);font-weight:500;
+  text-align:right;color:var(--accent);word-break:break-all;line-height:1.1;
+}
+.display-out.err{color:var(--neg);font-family:"Archivo",sans-serif;font-size:14px;font-weight:500;line-height:1.4}
+.display-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.mode-toggle{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.mode-toggle button{padding:5px 11px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;color:var(--ink-3);min-height:30px}
+.mode-toggle button[aria-pressed="true"]{background:var(--accent-fill);color:var(--accent-on)}
+
+.keypad{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:14px}
+@media(min-width:560px){.keypad{grid-template-columns:repeat(7,1fr)}}
+.key{
+  min-height:52px;border-radius:9px;border:1px solid var(--line);
+  background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Mono",monospace;font-size:14.5px;font-weight:500;
+  display:grid;place-items:center;
+  transition:transform .08s,background .15s,border-color .15s,color .15s;
+}
+.key:hover{border-color:var(--line-strong);background:var(--paper-3)}
+.key:active{transform:translateY(1px)}
+.key.fn{font-size:12.5px;color:var(--ink-2)}
+.key.op{color:var(--ink);font-size:17px;font-weight:600}
+.key.util{color:var(--ink-3);font-size:12px}
+.key.eq{background:var(--accent-fill);color:var(--accent-on);border-color:var(--accent-fill);font-size:19px}
+.key.eq:hover{background:var(--accent);border-color:var(--accent)}
+.key.wide{grid-column:span 2}
+
+.tape{border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper);display:flex;flex-direction:column;min-height:200px;max-height:460px}
+.tape-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.tape-list{overflow-y:auto;padding:6px;flex:1}
+.tape-item{width:100%;text-align:right;padding:9px 10px;border-radius:7px;transition:background .15s}
+.tape-item:hover{background:var(--accent-wash)}
+.tape-item .t-expr{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);word-break:break-all}
+.tape-item .t-val{font-family:"Bodoni Moda",Georgia,serif;font-size:19px;color:var(--ink)}
+.tape-empty{padding:28px 14px;text-align:center;color:var(--ink-3);font-size:12.5px;line-height:1.6}
+
+/* ---------- shared form bits ---------- */
+.lab{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.hint{font-size:11.5px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+.inp{
+  width:100%;min-height:48px;padding:11px 13px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--paper);
+  font-family:"IBM Plex Mono",monospace;font-size:16px;
+}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+.inp.big{font-size:18px;min-height:56px}
+.field-pair{display:grid;grid-template-columns:1fr auto;gap:8px}
+.unit{
+  display:grid;place-items:center;padding:0 12px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--paper-3);
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);min-width:52px;
+}
+.btn{
+  min-height:48px;padding:12px 22px;border-radius:var(--r-sm);
+  background:var(--accent-fill);color:var(--accent-on);
+  font-weight:600;font-size:14px;transition:filter .18s,transform .08s;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(1px)}
+.btn.quiet{background:none;color:var(--ink-2);border:1px solid var(--line)}
+.btn.quiet:hover{border-color:var(--accent);color:var(--accent);filter:none}
+
+/* ---------- solver ---------- */
+.solve-top{display:grid;gap:12px;margin-bottom:18px}
+.eqbar{display:flex;gap:8px;flex-wrap:wrap}
+.eqbar .inp{flex:1;min-width:220px}
+.roots{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.root{
+  border:1px solid var(--accent);border-radius:var(--r-sm);padding:10px 16px;
+  background:var(--accent-wash);
+}
+.root .r-var{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3);letter-spacing:.1em}
+.root .r-val{font-family:"Bodoni Moda",Georgia,serif;font-size:26px;color:var(--accent);line-height:1.15}
+.steps{border-left:2px solid var(--line-strong);padding:2px 0 2px 16px;margin:16px 0;display:grid;gap:9px}
+.steps li{list-style:none;font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.steps li b{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:600}
+.steps{padding-inline-start:16px;margin-block:16px}
+.plot{width:100%;height:auto;aspect-ratio:720/220;border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper);display:block}
+.plot .axis{stroke:var(--line-strong);stroke-width:1}
+.plot .grid{stroke:var(--line);stroke-width:.5}
+.plot .curve{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.plot .rootdot{fill:var(--ink);stroke:var(--paper-2);stroke-width:2}
+.plot text{font-family:"IBM Plex Mono",monospace;font-size:9px;fill:var(--ink-3)}
+
+/* ---------- money tools ---------- */
+.money-grid{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:760px){.money-grid{grid-template-columns:1fr 1fr}}
+.tool{border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper);padding:18px;display:flex;flex-direction:column}
+.tool h3{font-size:15px;margin-bottom:3px}
+.tool > .hint{margin:0 0 14px}
+.tool-fields{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.tool-fields .span{grid-column:1/-1}
+.readout{
+  margin-top:16px;padding:14px;border-radius:var(--r-sm);
+  background:var(--accent-wash);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);
+}
+.readout .r-main{font-family:"Bodoni Moda",Georgia,serif;font-size:30px;line-height:1.1;color:var(--accent);word-break:break-word}
+.readout .r-label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:2px}
+.readout .r-note{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.6}
+.breakdown{display:flex;height:8px;border-radius:99px;overflow:hidden;margin-top:12px;background:var(--paper-3)}
+.breakdown i{display:block;height:100%}
+.breakdown i.p{background:var(--accent)}
+.breakdown i.n{background:var(--hatch);opacity:.75}
+.legend{display:flex;gap:14px;margin-top:8px;font-size:11.5px;color:var(--ink-3);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;border:1px solid var(--line-strong)}
+.legend i.p{background:var(--ink)}
+.legend i.n{background:var(--hatch)}
+
+/* ---------- footer ---------- */
+.foot{
+  margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;
+  font-size:12px;color:var(--ink-3);line-height:1.7;
+}
+.foot a{color:var(--ink-2)}
+
+/* ---------- small screens ---------- */
+@media(max-width:640px){
+  .masthead{flex-wrap:wrap}
+  .status{order:3;width:100%;justify-content:center;margin-top:4px}
+}
+@media(max-width:560px){
+  .field-row{flex-wrap:wrap}
+  .ccy-btn{flex:1 1 100%}
+  .ccy-name{max-width:none}
+  .amount-in,.amount-out{flex:1 1 100%;font-size:clamp(32px,11vw,46px)}
+}
+@media(max-width:420px){
+  .tool-fields{grid-template-columns:1fr}
+  .wrap{padding-left:14px;padding-right:14px}
+  .sheet-inner{padding-left:16px;padding-right:16px}
+  .serial{margin:0 -16px;padding-left:16px;padding-right:16px}
+}
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <a class="mark" href="#" aria-label="Parity home">
+      <svg class="lozenge" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 6.5 17.5 12 12 17.5 6.5 12Z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+      <span>
+        <span class="word">PARITY</span>
+        <span class="sub">Rates &amp; reckoning</span>
+      </span>
+    </a>
+    <span class="masthead-spacer"></span>
+    <button class="status" id="status" data-state="loading" aria-label="Rate status. Press to refresh now" title="Refresh now">
+      <span class="dot" aria-hidden="true"></span><span id="statusText">Connecting</span>
+    </button>
+    <span class="sr-only" role="status" aria-live="polite" id="statusLive"></span>
+    <button class="icon-btn" id="themeBtn" aria-label="Switch to night paper" title="Switch paper">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 1 1 9.7 3.5a7 7 0 0 0 10.8 10.8Z"/></svg>
+    </button>
+  </header>
+
+  <div class="switch" role="tablist" aria-label="Choose a tool">
+    <button role="tab" id="tab-convert" aria-selected="true" aria-controls="view-convert" data-view="convert">Convert</button>
+    <button role="tab" id="tab-calc" aria-selected="false" aria-controls="view-calc" data-view="calc">Calculate</button>
+  </div>
+
+  <!-- ============ CONVERT ============ -->
+  <div id="view-convert" role="tabpanel" aria-labelledby="tab-convert">
+    <section class="sheet">
+      <svg class="guilloche" id="guilloche" viewBox="0 0 800 460" preserveAspectRatio="xMaxYMid meet" aria-hidden="true"></svg>
+      <div class="sheet-inner">
+
+        <div class="field">
+          <div class="field-head">
+            <span class="eyebrow">You have</span>
+            <span class="eyebrow" id="fromNote"></span>
+          </div>
+          <div class="field-row">
+            <button class="ccy-btn" id="fromBtn" aria-label="Change the currency you have" aria-haspopup="dialog">
+              <span class="coin" id="fromCoin" aria-hidden="true">R</span>
+              <span class="ccy-meta">
+                <span class="ccy-code" id="fromCode">ZAR</span>
+                <span class="ccy-name" id="fromName">South African Rand</span>
+              </span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <label class="sr-only" for="amount">Amount to convert</label>
+            <input class="amount-in mono" id="amount" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="1,000" placeholder="0">
+          </div>
+        </div>
+
+        <div class="swap-rail">
+          <button class="swap" id="swapBtn" aria-label="Swap the two currencies">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 4v13m0 0-3.5-3.5M7 17l3.5-3.5M17 20V7m0 0-3.5 3.5M17 7l3.5 3.5"/></svg>
+          </button>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <span class="eyebrow">You get</span>
+            <span class="eyebrow" id="toNote"></span>
+          </div>
+          <div class="field-row">
+            <button class="ccy-btn" id="toBtn" aria-label="Change the currency you get" aria-haspopup="dialog">
+              <span class="coin" id="toCoin" aria-hidden="true">$</span>
+              <span class="ccy-meta">
+                <span class="ccy-code" id="toCode">USD</span>
+                <span class="ccy-name" id="toName">United States Dollar</span>
+              </span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <output class="amount-out" id="result" for="amount">0.00</output>
+          </div>
+        </div>
+
+        <div class="rate-line">
+          <span id="rateMain"><b>0.00</b></span>
+          <span class="inverse" id="rateInv"></span>
+          <span class="delta" id="delta" hidden></span>
+          <svg class="spark" id="spark" viewBox="0 0 132 34" preserveAspectRatio="none" hidden aria-hidden="true"></svg>
+        </div>
+
+        <div class="chips">
+          <button class="chip" data-amt="1">1</button>
+          <button class="chip" data-amt="10">10</button>
+          <button class="chip" data-amt="100">100</button>
+          <button class="chip" data-amt="1000">1 000</button>
+          <button class="chip" data-amt="10000">10 000</button>
+          <button class="chip ghost" id="toCalcBtn">Open in calculator →</button>
+        </div>
+
+        <div class="serial mono">
+          <span id="serialLeft">SERIES 2026</span>
+          <span id="serialRight">No. 0000 0000</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="strip">
+      <div class="strip-head">
+        <h2 class="eyebrow" id="stripTitle">One unit buys</h2>
+        <span class="eyebrow" id="stripNote"></span>
+      </div>
+      <div class="strip-grid" id="stripGrid"></div>
+    </section>
+  </div>
+
+  <!-- ============ CALCULATE ============ -->
+  <div id="view-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+    <section class="sheet">
+      <div class="sheet-inner" style="padding-bottom:24px">
+        <div class="tabs" role="tablist" aria-label="Calculator mode">
+          <button role="tab" id="ct-sci" aria-selected="true" aria-controls="pane-sci" data-pane="sci">Scientific</button>
+          <button role="tab" id="ct-solve" aria-selected="false" aria-controls="pane-solve" data-pane="solve">Solve for x</button>
+          <button role="tab" id="ct-money" aria-selected="false" aria-controls="pane-money" data-pane="money">Money</button>
+          <button role="tab" id="ct-help" aria-selected="false" aria-controls="pane-help" data-pane="help">What it knows</button>
+        </div>
+
+        <!-- scientific -->
+        <div class="pane" id="pane-sci" role="tabpanel" aria-labelledby="ct-sci">
+          <div class="calc-grid">
+            <div>
+              <div class="display">
+                <div class="display-bar">
+                  <span>Expression</span>
+                  <span class="mode-toggle">
+                    <button id="degBtn" aria-pressed="true">DEG</button>
+                    <button id="radBtn" aria-pressed="false">RAD</button>
+                  </span>
+                </div>
+                <div class="display-expr mono" id="expr" aria-live="off"><span class="caret"></span></div>
+                <div class="display-out didone" id="out" role="status" aria-live="polite">0</div>
+              </div>
+              <div class="keypad" id="keypad"></div>
+              <p class="hint">Type straight into the page; your keyboard works. Enter evaluates, Backspace deletes, Escape clears. Implicit multiplication is fine: <span class="mono">2(3+4)</span>, <span class="mono">3π</span>, <span class="mono">2sin(30)</span>.</p>
+            </div>
+            <div class="tape">
+              <div class="tape-head">
+                <span class="eyebrow">Tape</span>
+                <button class="chip" id="clearTape" style="min-height:32px;padding:4px 10px">Clear</button>
+              </div>
+              <div class="tape-list" id="tapeList">
+                <p class="tape-empty">Nothing yet.<br>Every result you keep lands here. Tap one to reuse it.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- solver -->
+        <div class="pane" id="pane-solve" role="tabpanel" aria-labelledby="ct-solve" hidden>
+          <div class="solve-top">
+            <div>
+              <label class="lab" for="eq">Equation</label>
+              <div class="eqbar">
+                <input class="inp big mono" id="eq" value="2x^2 - 5x - 3 = 0" spellcheck="false" autocomplete="off">
+                <button class="btn" id="solveBtn">Solve</button>
+              </div>
+              <p class="hint">Put the unknown anywhere on either side. One unknown at a time. It is detected automatically, so <span class="mono">3t + 7 = 25</span> solves for t.</p>
+            </div>
+            <div class="chips" style="padding-bottom:0">
+              <button class="chip" data-eq="3x + 7 = 25">3x + 7 = 25</button>
+              <button class="chip" data-eq="x^2 - 4x + 4 = 0">x² − 4x + 4 = 0</button>
+              <button class="chip" data-eq="x^2 + 2x + 5 = 0">complex roots</button>
+              <button class="chip" data-eq="5000(1.08)^n = 12000">5000(1.08)ⁿ = 12000</button>
+              <button class="chip" data-eq="cos(x) = x">cos(x) = x</button>
+            </div>
+          </div>
+          <div id="solveOut"></div>
+        </div>
+
+        <!-- money -->
+        <div class="pane" id="pane-money" role="tabpanel" aria-labelledby="ct-money" hidden>
+          <div class="strip-head" style="margin-bottom:14px">
+            <p class="hint" style="margin:0">Every figure below is read and shown in <b id="moneyCcy" class="mono">ZAR</b>. Change the currency on the Convert sheet and these follow.</p>
+          </div>
+          <div class="money-grid" id="moneyGrid"></div>
+        </div>
+
+        <!-- help -->
+        <div class="pane" id="pane-help" role="tabpanel" aria-labelledby="ct-help" hidden>
+          <div class="money-grid" id="helpGrid"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <p>Live mid-market rates, refreshed while the page is open. FX markets close over the weekend, so the last quote holds until they reopen. Banks and cards add their own spread, so treat these as the reference, not the price you will get. Not financial advice.</p>
+    <p class="mono" id="footStamp"></p>
+  </footer>
+</div>
+
+<!-- currency picker -->
+<div class="picker-back" id="pickerBack" hidden>
+  <div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div class="picker-top">
+      <h2 class="sr-only" id="pickerTitle">Choose a currency</h2>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="pickerSearch" type="search" placeholder="Search 160+ currencies" aria-label="Search currencies" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="icon-btn" id="pickerClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="picker-list" id="pickerList" role="listbox" aria-label="Currencies" tabindex="-1"></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ============================================================
+   1. CURRENCIES: ISO 4217, with an offline fallback rate
+      (units per 1 USD) so the sheet always works.
+   ============================================================ */
+const RAW = `
+AED|UAE Dirham|د.إ|3.6725
+AFN|Afghan Afghani|؋|68.5
+ALL|Albanian Lek|L|83
+AMD|Armenian Dram|֏|383
+ANG|Neth. Antillean Guilder|ƒ|1.79
+AOA|Angolan Kwanza|Kz|915
+ARS|Argentine Peso|$|1290
+AUD|Australian Dollar|A$|1.53
+AWG|Aruban Florin|ƒ|1.79
+AZN|Azerbaijani Manat|₼|1.70
+BAM|Bosnian Conv. Mark|KM|1.75
+BBD|Barbadian Dollar|$|2.00
+BDT|Bangladeshi Taka|৳|121
+BGN|Bulgarian Lev|лв|1.75
+BHD|Bahraini Dinar|.د.ب|0.376
+BIF|Burundian Franc|FBu|2960
+BMD|Bermudian Dollar|$|1
+BND|Brunei Dollar|B$|1.28
+BOB|Bolivian Boliviano|Bs|6.91
+BRL|Brazilian Real|R$|5.42
+BSD|Bahamian Dollar|$|1
+BTN|Bhutanese Ngultrum|Nu|87.3
+BWP|Botswana Pula|P|13.4
+BYN|Belarusian Ruble|Br|3.27
+BZD|Belize Dollar|BZ$|2.01
+CAD|Canadian Dollar|C$|1.38
+CDF|Congolese Franc|FC|2880
+CHF|Swiss Franc|CHF|0.80
+CLP|Chilean Peso|$|960
+CNY|Chinese Yuan|¥|7.15
+COP|Colombian Peso|$|4020
+CRC|Costa Rican Colón|₡|505
+CUP|Cuban Peso|$|24
+CVE|Cape Verdean Escudo|$|98.7
+CZK|Czech Koruna|Kč|20.9
+DJF|Djiboutian Franc|Fdj|177.7
+DKK|Danish Krone|kr|6.68
+DOP|Dominican Peso|RD$|61.5
+DZD|Algerian Dinar|د.ج|129
+EGP|Egyptian Pound|E£|48.4
+ERN|Eritrean Nakfa|Nfk|15
+ETB|Ethiopian Birr|Br|140
+EUR|Euro|€|0.895
+FJD|Fijian Dollar|FJ$|2.25
+FKP|Falkland Pound|£|0.745
+GBP|British Pound|£|0.745
+GEL|Georgian Lari|₾|2.71
+GGP|Guernsey Pound|£|0.745
+GHS|Ghanaian Cedi|₵|11.6
+GIP|Gibraltar Pound|£|0.745
+GMD|Gambian Dalasi|D|72.5
+GNF|Guinean Franc|FG|8680
+GTQ|Guatemalan Quetzal|Q|7.66
+GYD|Guyanese Dollar|G$|209
+HKD|Hong Kong Dollar|HK$|7.82
+HNL|Honduran Lempira|L|26.2
+HTG|Haitian Gourde|G|131
+HUF|Hungarian Forint|Ft|352
+IDR|Indonesian Rupiah|Rp|16350
+ILS|Israeli New Shekel|₪|3.38
+IMP|Manx Pound|£|0.745
+INR|Indian Rupee|₹|87.4
+IQD|Iraqi Dinar|ع.د|1310
+IRR|Iranian Rial|﷼|42000
+ISK|Icelandic Króna|kr|122
+JEP|Jersey Pound|£|0.745
+JMD|Jamaican Dollar|J$|160
+JOD|Jordanian Dinar|د.ا|0.709
+JPY|Japanese Yen|¥|147
+KES|Kenyan Shilling|KSh|129
+KGS|Kyrgyzstani Som|с|87.4
+KHR|Cambodian Riel|៛|4020
+KMF|Comorian Franc|CF|440
+KPW|North Korean Won|₩|900
+KRW|South Korean Won|₩|1390
+KWD|Kuwaiti Dinar|د.ك|0.306
+KYD|Cayman Islands Dollar|CI$|0.833
+KZT|Kazakhstani Tenge|₸|538
+LAK|Lao Kip|₭|21700
+LBP|Lebanese Pound|ل.ل|89500
+LKR|Sri Lankan Rupee|Rs|301
+LRD|Liberian Dollar|L$|200
+LSL|Lesotho Loti|L|17.7
+LYD|Libyan Dinar|ل.د|5.42
+MAD|Moroccan Dirham|د.م.|9.05
+MDL|Moldovan Leu|L|16.9
+MGA|Malagasy Ariary|Ar|4440
+MKD|Macedonian Denar|ден|55.1
+MMK|Myanmar Kyat|K|2100
+MNT|Mongolian Tögrög|₮|3590
+MOP|Macanese Pataca|MOP$|8.05
+MRU|Mauritanian Ouguiya|UM|39.8
+MUR|Mauritian Rupee|₨|45.6
+MVR|Maldivian Rufiyaa|Rf|15.4
+MWK|Malawian Kwacha|MK|1735
+MXN|Mexican Peso|$|18.7
+MYR|Malaysian Ringgit|RM|4.22
+MZN|Mozambican Metical|MT|63.9
+NAD|Namibian Dollar|N$|17.7
+NGN|Nigerian Naira|₦|1530
+NIO|Nicaraguan Córdoba|C$|36.8
+NOK|Norwegian Krone|kr|10.15
+NPR|Nepalese Rupee|₨|139
+NZD|New Zealand Dollar|NZ$|1.68
+OMR|Omani Rial|ر.ع.|0.385
+PAB|Panamanian Balboa|B/.|1
+PEN|Peruvian Sol|S/|3.55
+PGK|Papua New Guinean Kina|K|4.13
+PHP|Philippine Peso|₱|57.0
+PKR|Pakistani Rupee|₨|283
+PLN|Polish Złoty|zł|3.64
+PYG|Paraguayan Guaraní|₲|7480
+QAR|Qatari Riyal|ر.ق|3.64
+RON|Romanian Leu|lei|4.36
+RSD|Serbian Dinar|дин.|104.8
+RUB|Russian Ruble|₽|80.2
+RWF|Rwandan Franc|FRw|1445
+SAR|Saudi Riyal|ر.س|3.75
+SBD|Solomon Is. Dollar|SI$|8.35
+SCR|Seychellois Rupee|₨|14.3
+SDG|Sudanese Pound|ج.س|601
+SEK|Swedish Krona|kr|9.55
+SGD|Singapore Dollar|S$|1.28
+SHP|St Helena Pound|£|0.745
+SLE|Sierra Leonean Leone|Le|23.0
+SOS|Somali Shilling|Sh|571
+SRD|Surinamese Dollar|$|38.5
+SSP|South Sudanese Pound|£|4600
+STN|São Tomé Dobra|Db|22.0
+SVC|Salvadoran Colón|₡|8.75
+SYP|Syrian Pound|£S|13000
+SZL|Swazi Lilangeni|E|17.7
+THB|Thai Baht|฿|32.4
+TJS|Tajikistani Somoni|SM|9.35
+TMT|Turkmenistani Manat|m|3.50
+TND|Tunisian Dinar|د.ت|2.90
+TOP|Tongan Paʻanga|T$|2.40
+TRY|Turkish Lira|₺|41.0
+TTD|Trinidad Dollar|TT$|6.80
+TVD|Tuvaluan Dollar|$|1.53
+TWD|New Taiwan Dollar|NT$|29.7
+TZS|Tanzanian Shilling|TSh|2600
+UAH|Ukrainian Hryvnia|₴|41.4
+UGX|Ugandan Shilling|USh|3560
+USD|United States Dollar|$|1
+UYU|Uruguayan Peso|$U|40.1
+UZS|Uzbekistani Som|soʻm|12600
+VES|Venezuelan Bolívar|Bs.|140
+VND|Vietnamese Đồng|₫|26200
+VUV|Vanuatu Vatu|VT|119
+WST|Samoan Tālā|T|2.72
+XAF|Central African CFA|FCFA|587
+XCD|East Caribbean Dollar|EC$|2.70
+XCG|Caribbean Guilder|Cg|1.79
+XDR|IMF Drawing Rights|SDR|0.73
+XOF|West African CFA|CFA|587
+XPF|CFP Franc|₣|107
+YER|Yemeni Rial|﷼|240
+ZAR|South African Rand|R|17.7
+ZMW|Zambian Kwacha|ZK|23.4
+ZWG|Zimbabwe Gold|ZiG|26.4
+`.trim();
+
+const CCY = {};      // code -> {code,name,sym,fallback}
+const CODES = [];
+RAW.split("\n").forEach(line=>{
+  const [code,name,sym,rate] = line.split("|");
+  CCY[code] = {code,name,sym,fallback:parseFloat(rate)};
+  CODES.push(code);
+});
+const POPULAR = ["ZAR","USD","EUR","GBP","JPY","AUD","CAD","CHF","CNY","INR","NGN","AED","BRL","KES"];
+
+/* per-USD rates in play + provenance */
+let RATES = {};
+CODES.forEach(c=>RATES[c]=CCY[c].fallback);
+let rateSource = "offline";   // offline | table | live
+let tableStamp = null;        // when the all-currency table was published
+let lastFetchAt = 0;          // when we last heard from any feed
+let livePair = null;          // {from,to,rate,changePct,at}: a real quote for the pair on screen
+
+async function getJSON(url, ms){
+  const ctl = new AbortController();
+  const timer = setTimeout(()=>ctl.abort(), ms || 7000);
+  try{
+    const res = await fetch(url, {signal:ctl.signal, cache:"no-store"});
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+  finally{ clearTimeout(timer); }
+}
+
+/* --- feed A: the whole table, every five minutes --- */
+const TABLE_FEEDS = [
+  {url:"https://fxapi.app/api/usd.json",
+   pick:d=>d && d.rates, when:d=>d.timestamp},
+  {url:"https://open.er-api.com/v6/latest/USD",
+   pick:d=>d && d.rates, when:d=>d.time_last_update_utc},
+  {url:"https://api.exchangerate-api.com/v4/latest/USD",
+   pick:d=>d && d.rates, when:d=>d.date},
+  {url:"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
+   pick:d=>{ if(!d || !d.usd) return null; const o={}; for(const k in d.usd) o[k.toUpperCase()] = d.usd[k]; return o; },
+   when:d=>d.date}
+];
+
+async function loadTable(){
+  for(const feed of TABLE_FEEDS){
+    const data = await getJSON(feed.url, 7000);
+    if(!data) continue;
+    const rates = feed.pick(data);
+    if(!rates || !rates.EUR) continue;
+    let hits = 0;
+    CODES.forEach(c=>{
+      const v = rates[c];
+      if(typeof v === "number" && isFinite(v) && v > 0){ RATES[c] = v; hits++; }
+    });
+    if(hits < 20) continue;
+    tableStamp = feed.when(data) || new Date().toISOString();
+    lastFetchAt = Date.now();
+    if(rateSource !== "live") rateSource = "table";
+    return true;
+  }
+  return false;
+}
+
+/* --- feed B: a live quote for the exact pair on screen --- */
+const PAIR_URL = (f,t) => "https://www.currencyexchangetool.com/api/v1/convert?amount=1&from=" + f + "&to=" + t;
+
+async function tickPair(){
+  const from = state.from, to = state.to;
+  if(from === to) return false;
+  const d = await getJSON(PAIR_URL(from, to), 6000);
+  if(!d || d.success === false || typeof d.rate !== "number" || !isFinite(d.rate) || d.rate <= 0){
+    if(livePair && livePair.from === from && livePair.to === to) return false;  // one blip, keep the quote
+    livePair = null;                       // this pair is not carried by the live feed
+    if(rateSource === "live") rateSource = lastFetchAt ? "table" : "offline";
+    return false;
+  }
+  if(state.from !== from || state.to !== to) return false;   // user moved on mid-flight
+  const moved = !livePair || livePair.from !== from || livePair.to !== to || livePair.rate !== d.rate;
+  livePair = {from, to, rate:d.rate, changePct:typeof d.changePct24h === "number" ? d.changePct24h : null, at:d.updatedAt};
+  rateSource = "live";
+  lastFetchAt = Date.now();
+  return moved;
+}
+
+/* --- feed C: thirty days of the pair, for the trace --- */
+const historyCache = {};
+async function loadHistory(){
+  const key = state.from + state.to;
+  if(state.from === state.to) return null;
+  if(historyCache[key] !== undefined) return historyCache[key];
+  historyCache[key] = null;
+  const d = await getJSON("https://www.currencyexchangetool.com/api/v1/history?from=" +
+    state.from + "&to=" + state.to + "&days=30", 8000);
+  const rows = d && d.success !== false && Array.isArray(d.data) ? d.data.filter(r=>isFinite(r.rate)) : null;
+  historyCache[key] = (rows && rows.length > 2) ? rows : null;
+  return historyCache[key];
+}
+
+const rateOf = code => RATES[code] || CCY[code].fallback;
+function rateFor(from, to){
+  if(from === to) return 1;
+  if(livePair && livePair.from === from && livePair.to === to) return livePair.rate;
+  if(livePair && livePair.from === to && livePair.to === from) return 1/livePair.rate;
+  return rateOf(to) / rateOf(from);
+}
+const convert = (amount, from, to) => amount * rateFor(from, to);
+/* ============================================================
+   2. MATH ENGINE: tokenizer, recursive-descent parser,
+      evaluator. No dependencies.
+   ============================================================ */
+let ANGLE = "deg";
+const toRad = v => ANGLE === "deg" ? v * Math.PI/180 : v;
+const fromRad = v => ANGLE === "deg" ? v * 180/Math.PI : v;
+
+function gammaFn(n){ // Lanczos, so factorial works on non-integers
+  const g = 7, C=[0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if(n < 0.5) return Math.PI / (Math.sin(Math.PI*n) * gammaFn(1-n));
+  n -= 1;
+  let x = C[0];
+  for(let i=1;i<g+2;i++) x += C[i]/(n+i);
+  const t = n + g + 0.5;
+  return Math.sqrt(2*Math.PI) * Math.pow(t, n+0.5) * Math.exp(-t) * x;
+}
+const factorial = n => {
+  if(n < 0 && Number.isInteger(n)) throw new Error("Factorial needs a non-negative number");
+  if(Number.isInteger(n) && n <= 170){ let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+  return gammaFn(n+1);
+};
+
+const FUNCS = {
+  sin:a=>Math.sin(toRad(a)), cos:a=>Math.cos(toRad(a)), tan:a=>Math.tan(toRad(a)),
+  asin:a=>fromRad(Math.asin(a)), acos:a=>fromRad(Math.acos(a)), atan:a=>fromRad(Math.atan(a)),
+  atan2:(a,b)=>fromRad(Math.atan2(a,b)),
+  sinh:Math.sinh, cosh:Math.cosh, tanh:Math.tanh,
+  asinh:Math.asinh, acosh:Math.acosh, atanh:Math.atanh,
+  sqrt:Math.sqrt, cbrt:Math.cbrt, root:(a,n)=>Math.sign(a)*Math.pow(Math.abs(a),1/n),
+  ln:Math.log, log:Math.log10, log2:Math.log2, logb:(a,b)=>Math.log(a)/Math.log(b),
+  exp:Math.exp, abs:Math.abs, sign:Math.sign,
+  floor:Math.floor, ceil:Math.ceil,
+  round:(a,d=0)=>{const m=Math.pow(10,d);return Math.round(a*m)/m;},
+  trunc:Math.trunc, hypot:Math.hypot, pow:Math.pow,
+  min:(...a)=>Math.min(...a), max:(...a)=>Math.max(...a),
+  mod:(a,b)=>((a%b)+b)%b,
+  fact:factorial, gamma:gammaFn,
+  gcd:(...a)=>a.map(Math.abs).reduce((x,y)=>{while(y){[x,y]=[y,x%y];}return x;}),
+  lcm:(...a)=>a.map(Math.abs).reduce((x,y)=>x/((()=>{let p=x,q=y;while(q){[p,q]=[q,p%q];}return p;})())*y),
+  ncr:(n,r)=>factorial(n)/(factorial(r)*factorial(n-r)),
+  npr:(n,r)=>factorial(n)/factorial(n-r),
+  rand:()=>Math.random(),
+  deg:a=>a*180/Math.PI, rad:a=>a*Math.PI/180,
+  pmt:(r,n,pv)=>r===0? pv/n : pv*r/(1-Math.pow(1+r,-n)),
+  fv:(r,n,pv)=>pv*Math.pow(1+r,n)
+};
+const CONSTS = {pi:Math.PI, "π":Math.PI, e:Math.E, tau:2*Math.PI, phi:(1+Math.sqrt(5))/2, "φ":(1+Math.sqrt(5))/2, inf:Infinity};
+
+function tokenize(src){
+  const s = String(src)
+    .replace(/×/g,"*").replace(/÷/g,"/").replace(/−/g,"-")
+    .replace(/√/g,"sqrt ").replace(/[，]/g,",")
+    .replace(/\u00a0|\u202f/g," ");
+  const out = []; let i = 0;
+  while(i < s.length){
+    const c = s[i];
+    if(c === " " || c === "\t"){ i++; continue; }
+    if(/[0-9.]/.test(c)){
+      let j = i;
+      while(j < s.length && /[0-9._]/.test(s[j])) j++;
+      if((s[j]==="e"||s[j]==="E") && /[0-9+-]/.test(s[j+1]||"")){
+        let k = j+1; if(s[k]==="+"||s[k]==="-") k++;
+        if(/[0-9]/.test(s[k]||"")){ while(/[0-9]/.test(s[k]||"")) k++; j = k; }
+      }
+      const raw = s.slice(i,j).replace(/_/g,"");
+      const v = parseFloat(raw);
+      if(!isFinite(v)) throw new Error("That number doesn't parse: " + raw);
+      out.push({t:"num", v}); i = j; continue;
+    }
+    if(/[A-Za-zπφ_]/.test(c)){
+      let j = i;
+      while(j < s.length && /[A-Za-z0-9_πφ]/.test(s[j])) j++;
+      out.push({t:"id", v:s.slice(i,j)}); i = j; continue;
+    }
+    if("+-*/^%!(),".includes(c)){ out.push({t:c}); i++; continue; }
+    throw new Error('Unexpected character "' + c + '"');
+  }
+  return out;
+}
+
+function parse(src){
+  const tk = tokenize(src);
+  let p = 0;
+  const peek = () => tk[p];
+  const eat = t => { if(tk[p] && tk[p].t === t){ p++; return true; } return false; };
+  const expect = t => { if(!eat(t)) throw new Error('Missing "' + t + '"'); };
+
+  function expr(){ return addsub(); }
+  function addsub(){
+    let n = muldiv();
+    while(peek() && (peek().t === "+" || peek().t === "-")){
+      const op = tk[p++].t; n = {n:"bin", op, a:n, b:muldiv()};
+    }
+    return n;
+  }
+  function muldiv(){
+    let n = unary();
+    for(;;){
+      const t = peek();
+      if(!t) break;
+      if(t.t === "*" || t.t === "/"){ p++; n = {n:"bin", op:t.t, a:n, b:unary()}; continue; }
+      // implicit multiplication: 2x, 3(4+5), 2sin(30), (a)(b)
+      if(t.t === "num" || t.t === "id" || t.t === "("){ n = {n:"bin", op:"*", a:n, b:unary()}; continue; }
+      break;
+    }
+    return n;
+  }
+  function unary(){
+    if(eat("-")) return {n:"neg", a:unary()};
+    if(eat("+")) return unary();
+    return power();
+  }
+  function power(){
+    const base = postfix();
+    if(eat("^")) return {n:"bin", op:"^", a:base, b:unary()};
+    return base;
+  }
+  function postfix(){
+    let n = primary();
+    for(;;){
+      if(eat("!")){ n = {n:"fact", a:n}; continue; }
+      if(eat("%")){ n = {n:"pct", a:n}; continue; }
+      break;
+    }
+    return n;
+  }
+  function primary(){
+    const t = peek();
+    if(!t) throw new Error("The expression stops early");
+    if(t.t === "num"){ p++; return {n:"num", v:t.v}; }
+    if(t.t === "("){ p++; const e = expr(); expect(")"); return e; }
+    if(t.t === "id"){
+      p++;
+      const name = t.v.toLowerCase();
+      if(peek() && peek().t === "("){
+        p++;
+        const args = [];
+        if(!eat(")")){
+          args.push(expr());
+          while(eat(",")) args.push(expr());
+          expect(")");
+        }
+        return {n:"call", name, args};
+      }
+      // a function written without brackets takes the next value: √16, sin 30
+      if(name in FUNCS && peek() && (peek().t === "num" || peek().t === "id")){
+        return {n:"call", name, args:[power()]};
+      }
+      return {n:"sym", name};
+    }
+    throw new Error('Unexpected "' + (t.v !== undefined ? t.v : t.t) + '"');
+  }
+
+  const tree = expr();
+  if(p < tk.length) throw new Error('Unexpected "' + (tk[p].v !== undefined ? tk[p].v : tk[p].t) + '"');
+  return tree;
+}
+
+function evaluate(node, scope){
+  scope = scope || {};
+  switch(node.n){
+    case "num": return node.v;
+    case "neg": return -evaluate(node.a, scope);
+    case "fact": return factorial(evaluate(node.a, scope));
+    case "pct": return evaluate(node.a, scope)/100;
+    case "sym":{
+      const k = node.name;
+      if(k in scope) return scope[k];
+      if(k in CONSTS) return CONSTS[k];
+      if(k in FUNCS) throw new Error(k + "() needs brackets, like " + k + "(2)");
+      throw new Error('Unknown name "' + k + '"');
+    }
+    case "call":{
+      const f = FUNCS[node.name];
+      if(!f) throw new Error('No function called "' + node.name + '"');
+      return f(...node.args.map(a=>evaluate(a, scope)));
+    }
+    case "bin":{
+      const a = evaluate(node.a, scope), b = evaluate(node.b, scope);
+      switch(node.op){
+        case "+": return a + b;
+        case "-": return a - b;
+        case "*": return a * b;
+        case "/": if(b === 0) throw new Error("Division by zero"); return a / b;
+        case "^": return Math.pow(a, b);
+      }
+    }
+  }
+  throw new Error("Cannot read that expression");
+}
+
+function compile(src){
+  const ast = parse(src);
+  return scope => evaluate(ast, scope);
+}
+function calc(src, scope){
+  const v = evaluate(parse(src), scope);
+  if(typeof v !== "number" || Number.isNaN(v)) throw new Error("Not a number. Check the inputs");
+  if(!isFinite(v)) throw new Error("Result is infinite");
+  return parseFloat(v.toPrecision(13));
+}
+function unknownsIn(src){
+  const found = new Set();
+  tokenize(src).forEach((t,i,arr)=>{
+    if(t.t !== "id") return;
+    const k = t.v.toLowerCase();
+    if(k in CONSTS || k in FUNCS) return;
+    if(arr[i+1] && arr[i+1].t === "(") return;
+    found.add(k);
+  });
+  return [...found];
+}
+
+/* number presentation */
+function fmtNum(v, max){
+  if(!isFinite(v)) return String(v);
+  const a = Math.abs(v);
+  if(a !== 0 && (a >= 1e12 || a < 1e-6)) return v.toExponential(6).replace("e","×10^");
+  return v.toLocaleString("en-US",{maximumFractionDigits: max === undefined ? 10 : max});
+}
+function fmtMoney(v, code){
+  const c = CCY[code] || {sym:"", code:code};
+  const a = Math.abs(v);
+  const dp = a === 0 ? 2 : a < 0.01 ? 6 : a < 1 ? 4 : 2;
+  const num = v.toLocaleString("en-US",{minimumFractionDigits:Math.min(dp,2), maximumFractionDigits:dp});
+  return c.sym ? c.sym + " " + num : num + " " + code;
+}
+function fmtPlain(v, dp){
+  return v.toLocaleString("en-US",{minimumFractionDigits:dp===undefined?2:dp, maximumFractionDigits:dp===undefined?2:dp});
+}
+const parseLoose = s => {
+  let str = String(s).replace(/[\s\u00a0\u202f']/g,"");
+  if(str === "" || str === "-") return 0;
+  const commas = (str.match(/,/g) || []).length;
+  // 2500,50 means two and a half thousand in most of the world
+  if(!str.includes(".") && commas === 1 && /,\d{1,2}$/.test(str)) str = str.replace(",",".");
+  else str = str.replace(/,/g,"");
+  const v = parseFloat(str);
+  return isFinite(v) ? v : NaN;
+};
+/* ============================================================
+   3. CONVERT SHEET
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const state = { from:"ZAR", to:"USD", amount:1000 };
+
+const els = {
+  amount:$("amount"), result:$("result"),
+  fromBtn:$("fromBtn"), toBtn:$("toBtn"),
+  rateMain:$("rateMain"), rateInv:$("rateInv"),
+  status:$("status"), statusText:$("statusText"),
+  serialLeft:$("serialLeft"), serialRight:$("serialRight"),
+  stripGrid:$("stripGrid"), stripTitle:$("stripTitle"), stripNote:$("stripNote"),
+  footStamp:$("footStamp"), delta:$("delta"), spark:$("spark"), statusLive:$("statusLive")
+};
+
+function paintCurrency(side){
+  const c = CCY[state[side]];
+  $(side+"Coin").textContent = c.sym.length > 3 ? c.code.slice(0,2) : c.sym;
+  $(side+"Code").textContent = c.code;
+  $(side+"Name").textContent = c.name;
+}
+
+function render(){
+  paintCurrency("from"); paintCurrency("to");
+  const amt = state.amount;
+  const val = convert(amt, state.from, state.to);
+  els.result.textContent = isFinite(val) ? fmtMoney(val, state.to) : "n/a";
+  els.result.title = els.result.textContent;
+
+  const one = convert(1, state.from, state.to);
+  const inv = convert(1, state.to, state.from);
+  els.rateMain.innerHTML = "1 " + state.from + " = <b>" + fmtNum(one, one < 1 ? 6 : 4) + " " + state.to + "</b>";
+  els.rateInv.textContent = "1 " + state.to + " = " + fmtNum(inv, inv < 1 ? 6 : 4) + " " + state.from;
+
+  paintDelta();
+  const digits = Math.round(Math.abs(val)*100).toString().padStart(8,"0").slice(-8);
+  els.serialLeft.textContent = "Series 2026 · " + state.from + " ▸ " + state.to;
+  els.serialRight.textContent = "No. " + digits.slice(0,4) + " " + digits.slice(4) + " · " +
+    (rateSource === "live" ? "LIVE" : rateSource === "table" ? "MID" : "REF");
+  $("moneyCcy").textContent = state.from;
+  drawGuilloche();
+  paintStrip();
+  if(typeof TOOLS !== "undefined"){ syncMoneyUnits(); runAllTools(); }
+}
+
+/* --- amount input: allow typing, group on blur --- */
+function readAmount(){
+  const v = parseLoose(els.amount.value);
+  state.amount = isNaN(v) ? 0 : v;
+}
+els.amount.addEventListener("input", ()=>{ readAmount(); render(); });
+els.amount.addEventListener("blur", ()=>{
+  els.amount.value = state.amount.toLocaleString("en-US",{maximumFractionDigits:6});
+});
+els.amount.addEventListener("focus", ()=>{ els.amount.select(); });
+readAmount();
+
+document.querySelectorAll(".chip[data-amt]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    state.amount = parseFloat(b.dataset.amt);
+    els.amount.value = state.amount.toLocaleString("en-US");
+    render();
+  });
+});
+
+$("swapBtn").addEventListener("click", e=>{
+  [state.from, state.to] = [state.to, state.from];
+  e.currentTarget.classList.toggle("spin");
+  render();
+  onPairChanged();
+});
+
+/* --- popular strip --- */
+function paintDelta(){
+  const live = livePair && livePair.from === state.from && livePair.to === state.to;
+  const inv  = livePair && livePair.from === state.to && livePair.to === state.from;
+  let pct = null;
+  if(live && livePair.changePct !== null) pct = livePair.changePct;
+  else if(inv && livePair.changePct !== null) pct = -livePair.changePct;
+  if(pct === null || !isFinite(pct)){ els.delta.hidden = true; return; }
+  const up = pct > 0, flat = Math.abs(pct) < 0.005;
+  els.delta.hidden = false;
+  els.delta.className = "delta" + (flat ? "" : up ? " up" : " down");
+  els.delta.textContent = (flat ? "=" : up ? "▲" : "▼") + " " +
+    Math.abs(pct).toFixed(2) + "% · 24h";
+}
+
+function flashResult(){
+  els.result.classList.remove("tick");
+  void els.result.offsetWidth;
+  els.result.classList.add("tick");
+}
+
+function paintSpark(rows){
+  if(!rows || rows.length < 3){ els.spark.hidden = true; return; }
+  const vals = rows.map(r=>r.rate);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = (hi - lo) || (hi * 0.001) || 1;
+  const W = 132, H = 34, pad = 4;
+  const px = i => pad + i/(vals.length-1)*(W-2*pad);
+  const py = v => H-pad - (v-lo)/span*(H-2*pad);
+  const d = vals.map((v,i)=>(i?"L":"M") + px(i).toFixed(1) + " " + py(v).toFixed(1)).join("");
+  const mid = py((hi+lo)/2).toFixed(1);
+  els.spark.hidden = false;
+  els.spark.innerHTML = '<path class="base" d="M' + pad + " " + mid + "L" + (W-pad) + " " + mid + '"/>' +
+    '<path d="' + d + '"/>' +
+    '<circle cx="' + px(vals.length-1).toFixed(1) + '" cy="' + py(vals[vals.length-1]).toFixed(1) + '" r="2"/>';
+  els.spark.setAttribute("aria-hidden","true");
+  els.spark.setAttribute("title", "Last 30 days: low " + fmtNum(lo,6) + ", high " + fmtNum(hi,6));
+}
+
+function paintStrip(){
+  const base = state.from;
+  els.stripTitle.textContent = "One " + base + " buys";
+  els.stripNote.textContent = rateSource === "offline" ? "stored reference rates" : "mid-market";
+  const list = POPULAR.filter(c=>c !== base).slice(0,8);
+  els.stripGrid.innerHTML = "";
+  list.forEach(code=>{
+    const v = convert(1, base, code);
+    const b = document.createElement("button");
+    b.className = "pair";
+    b.innerHTML = '<span class="p-code">' + base + " → " + code + '</span>' +
+                  '<span class="p-val didone">' + fmtNum(v, v < 1 ? 4 : 2) + "</span>";
+    b.addEventListener("click", ()=>{ state.to = code; render(); onPairChanged(); });
+    b.setAttribute("aria-label", "Convert to " + CCY[code].name);
+    els.stripGrid.appendChild(b);
+  });
+}
+
+/* ============================================================
+   4. GUILLOCHÉ: the rosette is a hypotrochoid whose shape is
+      derived from the currency pair, so every pair prints
+      a different security pattern.
+   ============================================================ */
+function drawGuilloche(){
+  const svg = $("guilloche");
+  const seed = [...(state.from + state.to)].reduce((s,ch)=>s + ch.charCodeAt(0), 0);
+  const cx = 640, cy = 230;
+  const rings = [
+    {R:210, k:(seed%7+3)/17,  l:0.86, cls:""},
+    {R:170, k:(seed%5+2)/13,  l:0.72, cls:"b"},
+    {R:120, k:(seed%11+4)/23, l:0.9,  cls:""}
+  ];
+  let out = "";
+  rings.forEach(r=>{
+    let d = "";
+    const steps = 1400;
+    for(let i=0;i<=steps;i++){
+      const t = i/steps * Math.PI * 2 * 9;
+      const x = cx + r.R*((1-r.k)*Math.cos(t) + r.k*r.l*Math.cos((1-r.k)/r.k*t));
+      const y = cy + r.R*((1-r.k)*Math.sin(t) - r.k*r.l*Math.sin((1-r.k)/r.k*t));
+      d += (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    }
+    out += '<path class="' + r.cls + '" d="' + d + '"/>';
+  });
+  svg.innerHTML = out;
+}
+
+/* ============================================================
+   5. CURRENCY PICKER
+   ============================================================ */
+const picker = {
+  back:$("pickerBack"), list:$("pickerList"), search:$("pickerSearch"),
+  side:"from", index:0, rows:[]
+};
+
+function openPicker(side){
+  picker.side = side;
+  picker.back.hidden = false;
+  picker.search.value = "";
+  buildPicker("");
+  setTimeout(()=>picker.search.focus(), 40);
+  document.body.style.overflow = "hidden";
+}
+function closePicker(){
+  picker.back.hidden = true;
+  document.body.style.overflow = "";
+  $(picker.side + "Btn").focus();
+}
+function buildPicker(query){
+  const q = query.trim().toLowerCase();
+  const match = code => {
+    const c = CCY[code];
+    return !q || code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.sym.toLowerCase().includes(q);
+  };
+  const current = state[picker.side];
+  const html = [];
+  picker.rows = [];
+  const row = code => {
+    const c = CCY[code];
+    const sel = code === current;
+    picker.rows.push(code);
+    return '<button class="opt" role="option" data-code="' + code + '" aria-selected="' + sel + '">' +
+      '<span class="coin" aria-hidden="true">' + (c.sym.length > 3 ? code.slice(0,2) : c.sym) + "</span>" +
+      '<span class="ccy-meta"><span class="opt-code">' + code + '</span><span class="opt-name">' + c.name + "</span></span>" +
+      (sel ? '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>' : "") +
+      "</button>";
+  };
+  const pop = POPULAR.filter(match);
+  if(pop.length && !q){
+    html.push('<p class="group-label">Frequently used</p>');
+    pop.forEach(c=>html.push(row(c)));
+  }
+  const rest = CODES.filter(c=>match(c) && (q || !POPULAR.includes(c)));
+  if(rest.length){
+    html.push('<p class="group-label">' + (q ? rest.length + " match" + (rest.length === 1 ? "" : "es") : "All currencies, A to Z") + "</p>");
+    rest.forEach(c=>html.push(row(c)));
+  }
+  if(!html.length) html.push('<p class="empty">No currency matches “' + query + '”.<br>Try a code like NGN or a name like naira.</p>');
+  picker.list.innerHTML = html.join("");
+  picker.index = Math.max(0, picker.rows.indexOf(current));
+  highlight();
+}
+function highlight(){
+  const opts = picker.list.querySelectorAll(".opt");
+  opts.forEach((o,i)=>o.classList.toggle("active", i === picker.index));
+  const el = opts[picker.index];
+  if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest"});
+}
+function choose(code){
+  if(!code) return;
+  const other = picker.side === "from" ? "to" : "from";
+  if(state[other] === code) state[other] = state[picker.side];
+  state[picker.side] = code;
+  closePicker();
+  render();
+  onPairChanged();
+}
+$("fromBtn").addEventListener("click", ()=>openPicker("from"));
+$("toBtn").addEventListener("click", ()=>openPicker("to"));
+$("pickerClose").addEventListener("click", closePicker);
+picker.back.addEventListener("mousedown", e=>{ if(e.target === picker.back) closePicker(); });
+picker.search.addEventListener("input", e=>buildPicker(e.target.value));
+picker.list.addEventListener("click", e=>{
+  const b = e.target.closest(".opt");
+  if(b) choose(b.dataset.code);
+});
+document.addEventListener("keydown", e=>{
+  if(picker.back.hidden) return;
+  if(e.key === "Escape"){ e.preventDefault(); closePicker(); }
+  else if(e.key === "ArrowDown"){ e.preventDefault(); picker.index = Math.min(picker.index+1, picker.rows.length-1); highlight(); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); picker.index = Math.max(picker.index-1, 0); highlight(); }
+  else if(e.key === "Enter"){ e.preventDefault(); choose(picker.rows[picker.index]); }
+});
+
+/* ============================================================
+   6. THEME + VIEW SWITCH
+   ============================================================ */
+const themeBtn = $("themeBtn");
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M22 12h-2.4M4.4 12H2m15.1-5.1-1.7 1.7M8.6 15.4l-1.7 1.7m10.2 0-1.7-1.7M8.6 8.6 6.9 6.9"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20.5 14.3A8.5 8.5 0 1 1 9.7 3.5a7 7 0 0 0 10.8 10.8Z"/></svg>';
+themeBtn.addEventListener("click", ()=>{
+  const night = document.documentElement.dataset.theme === "night";
+  document.documentElement.dataset.theme = night ? "day" : "night";
+  themeBtn.innerHTML = night ? MOON : SUN;
+  themeBtn.setAttribute("aria-label", night ? "Switch to night paper" : "Switch to day paper");
+});
+if(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches){
+  document.documentElement.dataset.theme = "night";
+  themeBtn.innerHTML = SUN;
+  themeBtn.setAttribute("aria-label","Switch to day paper");
+}
+
+const views = {convert:$("view-convert"), calc:$("view-calc")};
+document.querySelectorAll(".switch button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".switch button").forEach(b=>b.setAttribute("aria-selected", String(b === btn)));
+    for(const k in views) views[k].hidden = (k !== btn.dataset.view);
+    if(btn.dataset.view === "calc") setTimeout(()=>$("expr").scrollIntoView({block:"nearest"}), 0);
+  });
+});
+function showView(name){ document.getElementById("tab-" + name).click(); }
+$("toCalcBtn").addEventListener("click", ()=>{
+  showView("calc");
+  setExpr(String(state.amount) + " * " + fmtNum(convert(1, state.from, state.to), 6));
+});
+/* ============================================================
+   7. SCIENTIFIC CALCULATOR
+   ============================================================ */
+let exprStr = "";
+let lastAns = 0;
+let justEvaluated = false;
+const tape = [];
+
+const KEYS = [
+  {l:"sin",  i:"sin(", c:"fn"},  {l:"cos", i:"cos(", c:"fn"}, {l:"tan", i:"tan(", c:"fn"},
+  {l:"(",    i:"(",    c:"op"},  {l:")",   i:")",    c:"op"},
+  {l:"DEL",  a:"del",  c:"util"},{l:"AC",  a:"ac",   c:"util"},
+
+  {l:"ln",   i:"ln(",  c:"fn"},  {l:"log", i:"log(", c:"fn"}, {l:"√", i:"sqrt(", c:"fn"},
+  {l:"7",    i:"7"},             {l:"8",   i:"8"},            {l:"9", i:"9"},
+  {l:"÷",    i:"/",    c:"op"},
+
+  {l:"xʸ",   i:"^",    c:"fn"},  {l:"x²",  i:"^2",   c:"fn"}, {l:"n!", i:"!", c:"fn"},
+  {l:"4",    i:"4"},             {l:"5",   i:"5"},            {l:"6", i:"6"},
+  {l:"×",    i:"*",    c:"op"},
+
+  {l:"π",    i:"pi",   c:"fn"},  {l:"e",   i:"e",    c:"fn"}, {l:"%", i:"%", c:"fn"},
+  {l:"1",    i:"1"},             {l:"2",   i:"2"},            {l:"3", i:"3"},
+  {l:"−",    i:"-",    c:"op"},
+
+  {l:"ANS",  i:"ans",  c:"fn"},  {l:",",   i:",",    c:"op"}, {l:".", i:"."},
+  {l:"0",    i:"0"},             {l:"+",   i:"+",    c:"op"},
+  {l:"=",    a:"eq",   c:"eq wide"}
+];
+
+const keypad = $("keypad");
+KEYS.forEach(k=>{
+  const b = document.createElement("button");
+  b.className = "key " + (k.c || "");
+  b.textContent = k.l;
+  b.setAttribute("aria-label", k.l === "√" ? "square root" : k.l === "xʸ" ? "to the power of" : k.l);
+  b.addEventListener("click", ()=>{
+    if(k.a === "del") backspace();
+    else if(k.a === "ac") allClear();
+    else if(k.a === "eq") evaluateNow();
+    else insert(k.i);
+  });
+  keypad.appendChild(b);
+});
+
+function paintDisplay(){
+  $("expr").innerHTML = escapeHtml(exprStr) + '<span class="caret"></span>';
+  const out = $("out");
+  if(!exprStr.trim()){ out.textContent = "0"; out.classList.remove("err"); return; }
+  try{
+    const v = calc(exprStr, {ans:lastAns});
+    out.textContent = fmtNum(v);
+    out.classList.remove("err");
+  }catch(err){ /* keep the last good number while mid-typing */ }
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function insert(txt){
+  if(justEvaluated){
+    if(/^[0-9.(]/.test(txt)) exprStr = "";
+    else exprStr = "ans";
+    justEvaluated = false;
+  }
+  exprStr += txt;
+  paintDisplay();
+}
+function setExpr(txt){ exprStr = txt; justEvaluated = false; paintDisplay(); }
+function backspace(){
+  justEvaluated = false;
+  const fnEnd = exprStr.match(/(sin|cos|tan|ln|log|sqrt|ans|pi)\($|(ans|pi)$/);
+  exprStr = fnEnd ? exprStr.slice(0, -fnEnd[0].length) : exprStr.slice(0, -1);
+  paintDisplay();
+}
+function allClear(){
+  exprStr = ""; justEvaluated = false;
+  $("out").textContent = "0"; $("out").classList.remove("err");
+  paintDisplay();
+}
+function evaluateNow(){
+  if(!exprStr.trim()) return;
+  const out = $("out");
+  try{
+    const v = calc(exprStr, {ans:lastAns});
+    lastAns = v;
+    out.textContent = fmtNum(v);
+    out.classList.remove("err");
+    pushTape(exprStr, v);
+    justEvaluated = true;
+  }catch(err){
+    out.textContent = err.message;
+    out.classList.add("err");
+  }
+  paintDisplay();
+}
+function pushTape(expr, val){
+  tape.unshift({expr, val});
+  if(tape.length > 40) tape.pop();
+  paintTape();
+}
+function paintTape(){
+  const list = $("tapeList");
+  if(!tape.length){
+    list.innerHTML = '<p class="tape-empty">Nothing yet.<br>Every result you keep lands here. Tap one to reuse it.</p>';
+    return;
+  }
+  list.innerHTML = tape.map((t,i)=>
+    '<button class="tape-item" data-i="' + i + '"><span class="t-expr">' + escapeHtml(t.expr) + '</span><br><span class="t-val didone">' + fmtNum(t.val) + "</span></button>"
+  ).join("");
+}
+$("tapeList").addEventListener("click", e=>{
+  const b = e.target.closest(".tape-item");
+  if(!b) return;
+  insert(String(tape[+b.dataset.i].val));
+});
+$("clearTape").addEventListener("click", ()=>{ tape.length = 0; paintTape(); });
+
+$("degBtn").addEventListener("click", ()=>setAngle("deg"));
+$("radBtn").addEventListener("click", ()=>setAngle("rad"));
+function setAngle(mode){
+  ANGLE = mode;
+  $("degBtn").setAttribute("aria-pressed", String(mode === "deg"));
+  $("radBtn").setAttribute("aria-pressed", String(mode === "rad"));
+  paintDisplay();
+}
+
+/* physical keyboard */
+document.addEventListener("keydown", e=>{
+  if(!picker.back.hidden) return;
+  if(views.calc.hidden) return;
+  if($("pane-sci").hidden) return;
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if(tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if(/^[0-9.+\-*/^()!%,]$/.test(e.key)){ e.preventDefault(); insert(e.key); }
+  else if(e.key === "Enter" || e.key === "="){ e.preventDefault(); evaluateNow(); }
+  else if(e.key === "Backspace"){ e.preventDefault(); backspace(); }
+  else if(e.key === "Escape"){ e.preventDefault(); allClear(); }
+  else if(e.key === "x" || e.key === "X"){ e.preventDefault(); insert("*"); }
+});
+paintDisplay();
+/* ============================================================
+   8. SOLVE FOR X: exact for linear and quadratic, numeric
+      (sign-change scan + bisection + Newton polish) otherwise.
+   ============================================================ */
+function safeEval(f, x){
+  try{ const v = f(x); return (typeof v === "number" && isFinite(v)) ? v : null; }
+  catch(e){ return null; }
+}
+function bisect(f, lo, hi){
+  let flo = safeEval(f, lo);
+  if(flo === null) return (lo+hi)/2;
+  for(let i=0;i<90;i++){
+    const mid = (lo+hi)/2;
+    const fm = safeEval(f, mid);
+    if(fm === null) return mid;
+    if(fm === 0) return mid;
+    if((flo < 0) !== (fm < 0)) hi = mid; else { lo = mid; flo = fm; }
+  }
+  return (lo+hi)/2;
+}
+function polish(f, x){
+  for(let i=0;i<40;i++){
+    const h = Math.max(1e-8, Math.abs(x)*1e-8);
+    const f0 = safeEval(f, x);
+    if(f0 === null || f0 === 0) break;
+    const fp = safeEval(f, x+h), fm = safeEval(f, x-h);
+    if(fp === null || fm === null) break;
+    const d = (fp - fm) / (2*h);
+    if(!isFinite(d) || d === 0) break;
+    const nx = x - f0/d;
+    if(!isFinite(nx)) break;
+    if(Math.abs(nx-x) < 1e-14*Math.max(1, Math.abs(x))){ x = nx; break; }
+    x = nx;
+  }
+  return x;
+}
+function tidy(x){
+  const r = parseFloat(x.toPrecision(11));
+  const near = Math.round(r);
+  return Math.abs(r-near) < 1e-9 * Math.max(1,Math.abs(r)) ? near : r;
+}
+function numericRoots(f){
+  const found = [];
+  const add = x => {
+    if(x === null || !isFinite(x)) return;
+    const v = safeEval(f, x);
+    if(v === null || Math.abs(v) > 1e-6 * Math.max(1, Math.abs(x))) return;
+    const t = tidy(x);
+    if(!found.some(r=>Math.abs(r-t) < 1e-6 * Math.max(1, Math.abs(t)))) found.push(t);
+  };
+  const scan = (lo, hi, step)=>{
+    let px = lo, pv = safeEval(f, lo), ppv = null, ppx = null;
+    for(let x = lo+step; x <= hi+step/2; x += step){
+      const v = safeEval(f, x);
+      if(pv !== null && v !== null){
+        if(v === 0) add(x);
+        else if((pv < 0) !== (v < 0)) add(polish(f, bisect(f, px, x)));
+        else if(ppv !== null && Math.abs(pv) < Math.abs(ppv) && Math.abs(pv) < Math.abs(v)){
+          const cand = polish(f, px);            // a graze, i.e. a double root
+          if(cand >= ppx - step && cand <= x + step) add(cand);
+        }
+      }
+      ppv = pv; ppx = px; pv = v; px = x;
+    }
+  };
+  scan(-50, 50, 0.002);
+  scan(-2000, 2000, 0.5);
+  scan(-1e6, 1e6, 500);
+  return found.sort((a,b)=>a-b);
+}
+
+function solve(input){
+  const parts = input.split("=");
+  if(parts.length !== 2) throw new Error("An equation needs exactly one “=” sign, like 3x + 7 = 25.");
+  const [L, R] = parts;
+  if(!L.trim() || !R.trim()) throw new Error("Both sides of the “=” need something on them.");
+  const names = [...new Set([...unknownsIn(L), ...unknownsIn(R)])].filter(n=>n !== "ans");
+  if(names.length > 1) throw new Error("Found more than one unknown (" + names.join(", ") + "). Solve for one at a time.");
+
+  const fl = compile(L), fr = compile(R);
+  if(names.length === 0){
+    const a = fl({}), b = fr({});
+    return {kind:"statement", ok:Math.abs(a-b) < 1e-9, left:a, right:b};
+  }
+  const v = names[0];
+  const f = x => fl({[v]:x}) - fr({[v]:x});
+
+  // --- shape test: is f a polynomial of degree <= 2? ---
+  const f0 = safeEval(f,0), f1 = safeEval(f,1), fm1 = safeEval(f,-1);
+  let quad = null;
+  if(f0 !== null && f1 !== null && fm1 !== null){
+    const c = f0, a = (f1 + fm1)/2 - c, b = (f1 - fm1)/2;
+    const probe = [2.7, -3.4, 11.3];
+    const fits = probe.every(t=>{
+      const actual = safeEval(f, t);
+      if(actual === null) return false;
+      const model = a*t*t + b*t + c;
+      return Math.abs(actual - model) <= 1e-7 * Math.max(1, Math.abs(actual));
+    });
+    if(fits) quad = {a, b, c};
+  }
+
+  if(quad){
+    const {a,b,c} = quad;
+    if(Math.abs(a) < 1e-12){
+      if(Math.abs(b) < 1e-12){
+        return Math.abs(c) < 1e-12
+          ? {kind:"identity", v}
+          : {kind:"none", v};
+      }
+      const x = tidy(-c/b);
+      return {kind:"linear", v, a:b, b:c, roots:[x], f};
+    }
+    const D = b*b - 4*a*c;
+    if(D < 0){
+      const re = tidy(-b/(2*a)), im = tidy(Math.sqrt(-D)/(2*a));
+      return {kind:"quadratic", v, a, b, c, D, complex:{re, im:Math.abs(im)}, roots:[], f};
+    }
+    const s = Math.sqrt(D);
+    const r1 = tidy((-b - s)/(2*a)), r2 = tidy((-b + s)/(2*a));
+    const roots = D === 0 ? [r1] : [Math.min(r1,r2), Math.max(r1,r2)];
+    return {kind:"quadratic", v, a, b, c, D, roots, f};
+  }
+
+  const roots = numericRoots(f);
+  return {kind:"numeric", v, roots, f};
+}
+
+/* ---------- rendering the answer ---------- */
+function rootCard(v, x){
+  return '<div class="root"><div class="r-var mono">' + v + ' =</div><div class="r-val">' + fmtNum(x, 8).replace("-","−") + "</div></div>";
+}
+function renderSolution(res, raw){
+  const host = $("solveOut");
+  const N = x => fmtNum(x, 6).replace("-","−");
+  const term = (c, sym) => {
+    const m = Math.abs(c), sign = c < 0 ? " − " : " + ";
+    if(m < 1e-12) return "";
+    return sign + ((sym && Math.abs(m-1) < 1e-12) ? sym : fmtNum(m, 6) + (sym || ""));
+  };
+  const lead = (c, sym) => Math.abs(c-1) < 1e-12 ? sym : Math.abs(c+1) < 1e-12 ? "−" + sym : N(c) + sym;
+  const par = x => x < 0 ? "(" + N(x) + ")" : N(x);
+  let html = "";
+
+  if(res.kind === "statement"){
+    html = '<div class="readout"><div class="r-label">No unknown found</div><div class="r-main">' +
+      (res.ok ? "True" : "False") + '</div><p class="r-note">Left side is ' + N(res.left) +
+      ", right side is " + N(res.right) + ". Add a letter such as x to turn this into an equation.</p></div>";
+    host.innerHTML = html; return;
+  }
+  if(res.kind === "identity"){
+    html = '<div class="readout"><div class="r-label">Every number works</div><div class="r-main">' + res.v +
+      ' ∈ ℝ</div><p class="r-note">Both sides simplify to exactly the same expression, so any value of ' +
+      res.v + " satisfies it. That is an identity, not an equation to solve.</p></div>";
+    host.innerHTML = html; return;
+  }
+  if(res.kind === "none"){
+    html = '<div class="readout"><div class="r-label">No solution</div><div class="r-main">None</div>' +
+      '<p class="r-note">The unknown cancels out and leaves a statement that is never true, so no value of ' +
+      res.v + " works.</p></div>";
+    host.innerHTML = html; return;
+  }
+
+  if(res.roots.length){
+    html += '<div class="roots">' + res.roots.map(r=>rootCard(res.v, r)).join("") + "</div>";
+  }
+
+  if(res.kind === "linear"){
+    html += '<ol class="steps">' +
+      "<li>Gather everything on one side: <b>" + lead(res.a, res.v) + term(res.b) + " = 0</b></li>" +
+      "<li>Leave the " + res.v + " term alone: <b>" + lead(res.a, res.v) + " = " + N(-res.b) + "</b></li>" +
+      "<li>Divide both sides by " + N(res.a) + ": <b>" + res.v + " = " + N(-res.b) + " ÷ " + N(res.a) + " = " + N(res.roots[0]) + "</b></li>" +
+      "</ol>";
+  }
+  if(res.kind === "quadratic"){
+    const {a,b,c,D} = res;
+    html += '<ol class="steps">' +
+      "<li>Written as a quadratic: <b>" + lead(a, res.v + "²") + term(b, res.v) + term(c) + " = 0</b></li>" +
+      "<li>Discriminant <b>Δ = b² − 4ac = " + par(b) + "² − 4(" + N(a) + ")(" + N(c) + ") = " + N(D) + "</b></li>" +
+      (D > 0 ? "<li>Δ is positive, so there are two real roots: <b>" + res.v + " = (−b ± √Δ) ÷ 2a</b></li>"
+       : D === 0 ? "<li>Δ is zero, so the parabola touches the axis once, giving a repeated root.</li>"
+       : "<li>Δ is negative, so the parabola never crosses the axis. The roots are a complex conjugate pair.</li>") +
+      (res.complex ? "<li><b>" + res.v + " = " + N(res.complex.re) + " ± " + N(res.complex.im) + "i</b></li>" : "") +
+      "</ol>";
+    if(res.complex){
+      html = '<div class="roots"><div class="root"><div class="r-var mono">' + res.v +
+        ' =</div><div class="r-val">' + N(res.complex.re) + " ± " + N(res.complex.im) + "i</div></div></div>" + html;
+    }
+  }
+  if(res.kind === "numeric"){
+    html += '<ol class="steps">' +
+      "<li>This one is not a simple polynomial, so it was solved numerically: the two sides were subtracted and the result scanned for sign changes, then narrowed by bisection.</li>" +
+      (res.roots.length
+        ? "<li>Searched from −1 000 000 to 1 000 000. Answers are accurate to about 10 significant figures; there may be further roots outside that range.</li>"
+        : "<li>No crossing was found between −1 000 000 and 1 000 000. The equation may have no real solution, or the root may be extremely close to a graze that a scan cannot see.</li>") +
+      "</ol>";
+  }
+  if(res.f && (res.roots.length || res.kind === "numeric")) html += plotSVG(res.f, res.roots, res.v);
+  host.innerHTML = html;
+}
+
+function plotSVG(f, roots, v){
+  const W = 720, H = 220, pad = 26;
+  let lo = -10, hi = 10;
+  if(roots.length){
+    const min = Math.min(...roots), max = Math.max(...roots);
+    const span = Math.max(max - min, 2);
+    lo = min - span*0.7; hi = max + span*0.7;
+  }
+  const xs = [], ys = [];
+  const N = 460;
+  for(let i=0;i<=N;i++){
+    const x = lo + (hi-lo)*i/N;
+    const y = safeEval(f, x);
+    xs.push(x); ys.push(y);
+  }
+  const finite = ys.filter(y=>y !== null && isFinite(y)).sort((a,b)=>a-b);
+  if(!finite.length) return "";
+  const q = p => finite[Math.min(finite.length-1, Math.max(0, Math.floor(p*(finite.length-1))))];
+  let ylo = q(0.02), yhi = q(0.98);
+  if(ylo === yhi){ ylo -= 1; yhi += 1; }
+  const m = (yhi-ylo)*0.15; ylo -= m; yhi += m;
+  if(ylo > 0) ylo = -m; if(yhi < 0) yhi = m;
+
+  const px = x => pad + (x-lo)/(hi-lo)*(W-2*pad);
+  const py = y => H-pad - (y-ylo)/(yhi-ylo)*(H-2*pad);
+
+  let d = "", pen = false;
+  for(let i=0;i<=N;i++){
+    const y = ys[i];
+    if(y === null || !isFinite(y) || y < ylo-(yhi-ylo)*3 || y > yhi+(yhi-ylo)*3){ pen = false; continue; }
+    d += (pen ? "L" : "M") + px(xs[i]).toFixed(1) + " " + py(y).toFixed(1);
+    pen = true;
+  }
+  const y0 = py(0), x0 = px(0);
+  let g = "";
+  if(y0 > pad && y0 < H-pad) g += '<line class="axis" x1="' + pad + '" y1="' + y0.toFixed(1) + '" x2="' + (W-pad) + '" y2="' + y0.toFixed(1) + '"/>';
+  if(x0 > pad && x0 < W-pad) g += '<line class="axis" x1="' + x0.toFixed(1) + '" y1="' + pad + '" x2="' + x0.toFixed(1) + '" y2="' + (H-pad) + '"/>';
+  const dots = roots.filter(r=>r>=lo && r<=hi)
+    .map(r=>'<circle class="rootdot" cx="' + px(r).toFixed(1) + '" cy="' + y0.toFixed(1) + '" r="4.5"/>').join("");
+
+  return '<p class="eyebrow" style="margin:22px 0 8px">Where the two sides meet</p>' +
+    '<svg class="plot" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Graph of the difference between the two sides, with roots marked">' +
+    g + '<path class="curve" d="' + d + '"/>' + dots +
+    '<text x="' + pad + '" y="' + (H-8) + '">' + fmtNum(lo,2) + "</text>" +
+    '<text x="' + (W-pad) + '" y="' + (H-8) + '" text-anchor="end">' + fmtNum(hi,2) + "</text>" +
+    '<text x="' + pad + '" y="' + (pad-8) + '">f(' + v + ") = left − right</text>" +
+    "</svg>";
+}
+
+function runSolve(){
+  const raw = $("eq").value;
+  try{
+    renderSolution(solve(raw), raw);
+  }catch(err){
+    $("solveOut").innerHTML = '<div class="readout" style="background:none;border-color:var(--line)">' +
+      '<div class="r-label">Cannot solve that yet</div><p class="r-note" style="margin-top:4px">' + escapeHtml(err.message) + "</p></div>";
+  }
+}
+$("solveBtn").addEventListener("click", runSolve);
+$("eq").addEventListener("keydown", e=>{ if(e.key === "Enter") runSolve(); });
+document.querySelectorAll(".chip[data-eq]").forEach(b=>{
+  b.addEventListener("click", ()=>{ $("eq").value = b.dataset.eq; runSolve(); });
+});
+/* ============================================================
+   9. MONEY: every input field is itself a calculator, and
+      every amount is shown in the currency on the sheet.
+   ============================================================ */
+const money = v => fmtMoney(v, state.from);
+const pct = v => fmtPlain(v, 2) + "%";
+function monthsToText(m){
+  const t = Math.ceil(m);
+  const y = Math.floor(t/12), mo = t%12;
+  if(y && mo) return y + (y===1?" year ":" years ") + mo + (mo===1?" month":" months");
+  if(y) return y + (y===1?" year":" years");
+  return t + (t===1?" month":" months");
+}
+
+const TOOLS = [
+{
+  id:"loan", title:"Loan or bond repayment",
+  hint:"What a borrowed amount really costs once interest is added.",
+  fields:[
+    {k:"P", label:"Amount borrowed", val:"1200000", unit:"ccy", span:true},
+    {k:"r", label:"Interest rate a year", val:"11.75", unit:"%"},
+    {k:"y", label:"Term", val:"20", unit:"years"}
+  ],
+  run(v){
+    if(v.y <= 0) throw 0;
+    const i = v.r/100/12, n = v.y*12;
+    const pmt = i === 0 ? v.P/n : v.P*i/(1 - Math.pow(1+i, -n));
+    const total = pmt*n, interest = total - v.P;
+    return {
+      label:"Repayment each month", main:money(pmt),
+      note:"Over " + monthsToText(n) + " you repay " + money(total) + " in total. " +
+           money(interest) + " of that is interest, which is " + pct(v.P ? interest/v.P*100 : 0) + " on top of what you borrowed.",
+      bars:[{v:v.P, cls:"p", label:"Capital"},{v:Math.max(interest,0), cls:"n", label:"Interest"}]
+    };
+  }
+},
+{
+  id:"grow", title:"Money left to grow",
+  hint:"A starting amount plus a monthly deposit, compounded.",
+  fields:[
+    {k:"P", label:"Starting amount", val:"5000", unit:"ccy"},
+    {k:"m", label:"Added each month", val:"1000", unit:"ccy"},
+    {k:"r", label:"Return a year", val:"9", unit:"%"},
+    {k:"y", label:"For", val:"15", unit:"years"}
+  ],
+  run(v){
+    const i = v.r/100/12, n = v.y*12;
+    const fv = v.P*Math.pow(1+i,n) + (i === 0 ? v.m*n : v.m*((Math.pow(1+i,n)-1)/i));
+    const put = v.P + v.m*n, growth = fv - put;
+    return {
+      label:"Value after " + fmtPlain(v.y,0) + (v.y===1?" year":" years"), main:money(fv),
+      note:"You put in " + money(put) + ". Compounding adds " + money(growth) +
+           " on top, which is " + pct(put ? growth/put*100 : 0) + " more than you deposited.",
+      bars:[{v:Math.max(put,0), cls:"p", label:"What you put in"},{v:Math.max(growth,0), cls:"n", label:"Growth"}]
+    };
+  }
+},
+{
+  id:"goal", title:"Reaching a savings goal",
+  hint:"Work backwards from the number you want to end up with.",
+  fields:[
+    {k:"T", label:"Target amount", val:"250000", unit:"ccy", span:true},
+    {k:"r", label:"Return a year", val:"7", unit:"%"},
+    {k:"y", label:"In", val:"5", unit:"years"}
+  ],
+  run(v){
+    if(v.y <= 0) throw 0;
+    const i = v.r/100/12, n = v.y*12;
+    const pmt = i === 0 ? v.T/n : v.T*i/(Math.pow(1+i,n)-1);
+    const put = pmt*n;
+    return {
+      label:"Save each month", main:money(pmt),
+      note:"That is " + money(put) + " of your own money over " + monthsToText(n) +
+           "; interest covers the remaining " + money(v.T - put) + ".",
+      bars:[{v:Math.max(put,0), cls:"p", label:"Your deposits"},{v:Math.max(v.T-put,0), cls:"n", label:"Interest earned"}]
+    };
+  }
+},
+{
+  id:"card", title:"Clearing a card or short-term debt",
+  hint:"How long a fixed monthly payment takes to finish the job.",
+  fields:[
+    {k:"B", label:"Balance owed", val:"25000", unit:"ccy"},
+    {k:"r", label:"Interest rate a year", val:"22.5", unit:"%"},
+    {k:"m", label:"You pay monthly", val:"1500", unit:"ccy", span:true}
+  ],
+  run(v){
+    const i = v.r/100/12;
+    const due = v.B*i;
+    if(v.m <= due){
+      return {
+        label:"This payment never clears it", main:"Never",
+        note:"Interest alone is " + money(due) + " a month, so a payment of " + money(v.m) +
+             " does not even cover it and the balance grows. Pay more than " + money(due) + " to make progress."
+      };
+    }
+    const n = i === 0 ? v.B/v.m : -Math.log(1 - v.B*i/v.m)/Math.log(1+i);
+    const total = v.m*n, interest = total - v.B;
+    return {
+      label:"Time to clear it", main:monthsToText(n),
+      note:"You hand over " + money(total) + " in total, of which " + money(interest) +
+           " is interest. Adding just 10% to the payment cuts it to " + monthsToText(-Math.log(1 - v.B*i/(v.m*1.1))/Math.log(1+i)) + ".",
+      bars:[{v:v.B, cls:"p", label:"Balance"},{v:Math.max(interest,0), cls:"n", label:"Interest"}]
+    };
+  }
+},
+{
+  id:"roi", title:"Return on something you bought",
+  hint:"Total gain, and what that works out to per year.",
+  fields:[
+    {k:"B", label:"You paid", val:"10000", unit:"ccy"},
+    {k:"S", label:"It is now worth", val:"18500", unit:"ccy"},
+    {k:"y", label:"Held for", val:"4", unit:"years", span:true}
+  ],
+  run(v){
+    if(v.B <= 0 || v.y <= 0) throw 0;
+    const gain = v.S - v.B;
+    const totalPct = gain/v.B*100;
+    const cagr = (Math.pow(v.S/v.B, 1/v.y) - 1)*100;
+    return {
+      label:"Growth a year (compound)", main:pct(cagr),
+      note:(gain >= 0 ? "A gain of " : "A loss of ") + money(Math.abs(gain)) + ", which is " +
+           pct(Math.abs(totalPct)) + " " + (gain >= 0 ? "up" : "down") + " in total over " +
+           fmtPlain(v.y,0) + (v.y===1?" year":" years") + ". Compare that against inflation before calling it a win."
+    };
+  }
+},
+{
+  id:"infl", title:"What inflation does to a price",
+  hint:"The same basket, and the same cash, years from now.",
+  fields:[
+    {k:"P", label:"Costs today", val:"1000", unit:"ccy"},
+    {k:"r", label:"Inflation a year", val:"5", unit:"%"},
+    {k:"y", label:"In", val:"10", unit:"years", span:true}
+  ],
+  run(v){
+    const f = v.P*Math.pow(1+v.r/100, v.y);
+    const worth = v.P/Math.pow(1+v.r/100, v.y);
+    return {
+      label:"Same thing will cost", main:money(f),
+      note:"Put differently: " + money(v.P) + " kept under the mattress would buy what " +
+           money(worth) + " buys today. Money needs to earn at least " + pct(v.r) + " a year just to stand still."
+    };
+  }
+},
+{
+  id:"split", title:"Splitting a bill",
+  hint:"Tip and tax added, then divided evenly.",
+  fields:[
+    {k:"B", label:"Bill before tip", val:"860", unit:"ccy"},
+    {k:"t", label:"Tip", val:"10", unit:"%"},
+    {k:"x", label:"Tax added", val:"0", unit:"%"},
+    {k:"n", label:"People", val:"4", unit:"pax"}
+  ],
+  run(v){
+    if(v.n < 1) throw 0;
+    const total = v.B*(1 + v.t/100 + v.x/100);
+    return {
+      label:"Each person pays", main:money(total/v.n),
+      note:"Total with extras is " + money(total) + ", made up of " + money(v.B*v.t/100) +
+           " in tip and " + money(v.B*v.x/100) + " in tax."
+    };
+  }
+},
+{
+  id:"pctool", title:"Percentages, three ways",
+  hint:"The three questions people actually ask about percent.",
+  fields:[
+    {k:"a", label:"First number (A)", val:"15"},
+    {k:"b", label:"Second number (B)", val:"250"}
+  ],
+  run(v){
+    const ofIt = v.a/100*v.b;
+    const isPct = v.b ? v.a/v.b*100 : NaN;
+    const change = v.a ? (v.b - v.a)/Math.abs(v.a)*100 : NaN;
+    return {
+      label:"A% of B", main:fmtNum(ofIt, 6),
+      note:"A is " + (isFinite(isPct) ? pct(isPct) : "n/a") + " of B. Going from A to B is a " +
+           (isFinite(change) ? (change >= 0 ? "rise" : "fall") + " of " + pct(Math.abs(change)) : "n/a") + "."
+    };
+  }
+}
+];
+
+const grid = $("moneyGrid");
+TOOLS.forEach(tool=>{
+  const card = document.createElement("section");
+  card.className = "tool";
+  card.innerHTML =
+    "<h3>" + tool.title + '</h3><p class="hint">' + tool.hint + "</p>" +
+    '<div class="tool-fields">' + tool.fields.map(f=>
+      '<div' + (f.span ? ' class="span"' : "") + '>' +
+        '<label class="lab" for="' + tool.id + "-" + f.k + '">' + f.label + "</label>" +
+        '<div class="field-pair">' +
+          '<input class="inp" id="' + tool.id + "-" + f.k + '" value="' + f.val + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
+          '<span class="unit"' + (f.unit === "ccy" ? ' data-ccy="1"' : "") + ">" + (f.unit === "ccy" ? state.from : (f.unit || "&nbsp;")) + "</span>" +
+        "</div>" +
+      "</div>").join("") +
+    "</div>" +
+    '<div class="readout" id="' + tool.id + '-out"></div>';
+  grid.appendChild(card);
+  tool.fields.forEach(f=>{
+    card.querySelector("#" + tool.id + "-" + f.k).addEventListener("input", ()=>runTool(tool));
+  });
+});
+
+function runTool(tool){
+  const out = $(tool.id + "-out");
+  const v = {};
+  let bad = null;
+  tool.fields.forEach(f=>{
+    let raw = $(tool.id + "-" + f.k).value.trim();
+    if(f.unit === "%" && raw.endsWith("%")) raw = raw.slice(0, -1);
+    const plain = parseLoose(raw);
+    if(/^[\d\s.,'-]+$/.test(raw) && !isNaN(plain)){ v[f.k] = plain; return; }
+    try{ v[f.k] = calc(raw || "0", {ans:lastAns}); }
+    catch(e){ v[f.k] = NaN; bad = bad || f.label; }
+  });
+  if(bad){
+    out.innerHTML = '<div class="r-label">Check one field</div><div class="r-main" style="font-size:20px">' + bad + "</div>" +
+      '<p class="r-note">That box needs a number. You can type sums too, like 4500*12.</p>';
+    return;
+  }
+  let res;
+  try{ res = tool.run(v); }
+  catch(e){
+    out.innerHTML = '<div class="r-label">Not enough to work with</div><div class="r-main" style="font-size:20px">n/a</div>' +
+      '<p class="r-note">Give every box a sensible value. Terms and counts need to be above zero.</p>';
+    return;
+  }
+  let html = '<div class="r-label">' + res.label + '</div><div class="r-main">' + res.main + "</div>" +
+             '<p class="r-note">' + res.note + "</p>";
+  if(res.bars){
+    const sum = res.bars.reduce((s,b)=>s+b.v,0) || 1;
+    html += '<div class="breakdown">' + res.bars.map(b=>'<i class="' + b.cls + '" style="width:' + (b.v/sum*100).toFixed(2) + '%"></i>').join("") + "</div>" +
+      '<div class="legend">' + res.bars.map(b=>'<span><i class="' + b.cls + '"></i>' + b.label + " · " + money(b.v) + "</span>").join("") + "</div>";
+  }
+  out.innerHTML = html;
+}
+function runAllTools(){ TOOLS.forEach(runTool); }
+function syncMoneyUnits(){
+  document.querySelectorAll(".unit[data-ccy]").forEach(u=>u.textContent = state.from);
+}
+
+/* ============================================================
+   10. REFERENCE PANE
+   ============================================================ */
+$("helpGrid").innerHTML = [
+  ["Arithmetic","<b>+ − × ÷</b> and <b>^</b> for powers. Brackets nest as deep as you like. <b>!</b> is factorial, <b>%</b> divides by a hundred, and <b>mod(a,b)</b> is the remainder. Numbers may be written 1_000_000 or 1.6e-19."],
+  ["Implicit multiplication","<b>2(3+4)</b>, <b>3π</b>, <b>2sin(30)</b> and <b>(x+1)(x−1)</b> all mean what you would expect, with no star required."],
+  ["Trigonometry","sin, cos, tan and their inverses asin, acos, atan, plus atan2(y,x). Hyperbolics: sinh, cosh, tanh, asinh, acosh, atanh. Switch DEG/RAD above the keypad; the setting applies to input and output."],
+  ["Logs, roots, powers","ln, log (base 10), log2, logb(x,b), sqrt, cbrt, root(x,n), exp, pow(a,b), hypot(a,b)."],
+  ["Rounding and comparison","round(x), round(x,2), floor, ceil, trunc, abs, sign, min(…), max(…)."],
+  ["Combinatorics","fact(n) and n!, gamma(n) for non-integers, ncr(n,r), npr(n,r), gcd(…), lcm(…)."],
+  ["Constants and memory","pi (or π), e, tau, phi, and <b>ans</b> for your last result. Tap anything on the tape to drop it into the expression."],
+  ["Equations","On the Solve tab, write both sides with one unknown: <b>3t + 7 = 25</b>. Linear and quadratic equations are solved exactly and shown step by step, including complex roots. Anything else is solved numerically and graphed."],
+  ["Money fields","Every box on the Money tab accepts a sum, not just a number. Type <b>4500*12</b> or <b>85000/3</b> and it works out the rest."]
+].map(([t,b])=>'<section class="tool"><h3>' + t + '</h3><p class="hint" style="margin:6px 0 0;font-size:13px">' + b + "</p></section>").join("");
+
+/* calculator tab switching */
+const panes = ["sci","solve","money","help"];
+document.querySelectorAll(".tabs button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected", String(b === btn)));
+    panes.forEach(p=>$("pane-" + p).hidden = (p !== btn.dataset.pane));
+  });
+});
+
+/* ============================================================
+   11. START
+   ============================================================ */
+function setStatus(mode, text){
+  els.status.dataset.state = mode;
+  els.statusText.textContent = text;
+}
+function agoText(ms){
+  const sec = Math.max(0, Math.round(ms/1000));
+  if(sec < 5)  return "just now";
+  if(sec < 60) return sec + "s ago";
+  const min = Math.round(sec/60);
+  if(min < 60) return min + (min === 1 ? " min ago" : " mins ago");
+  const hr = Math.round(min/60);
+  if(hr < 24) return hr + (hr === 1 ? " hour ago" : " hours ago");
+  return Math.round(hr/24) + "d ago";
+}
+function paintStatus(){
+  if(busy) return;
+  if(!lastFetchAt){ setStatus("offline", "Reference rates"); return; }
+  const label = rateSource === "live" ? "Live" : rateSource === "table" ? "Mid-market" : "Reference";
+  setStatus(rateSource === "offline" ? "offline" : "live", label + " · " + agoText(Date.now() - lastFetchAt));
+}
+
+/* ---- polling ---- */
+const PAIR_EVERY  = 20000;    // a fresh quote for the pair on screen
+const TABLE_EVERY = 300000;   // the whole table republishes about every five minutes
+let busy = false, pairTimer = null, tableTimer = null;
+
+async function refreshPair(showBusy){
+  if(busy) return;
+  busy = true;
+  if(showBusy) setStatus("loading", "Checking");
+  const moved = await tickPair();
+  busy = false;
+  render();
+  if(moved) flashResult();
+  paintStatus();
+  if(lastFetchAt) els.statusLive.textContent = "Rates updated " + agoText(0);
+}
+
+async function refreshTable(showBusy){
+  if(showBusy) setStatus("loading", "Fetching rates");
+  const ok = await loadTable();
+  if(!ok && !lastFetchAt) rateSource = "offline";
+  render();
+  paintStatus();
+  els.footStamp.textContent = stampText();
+}
+
+function stampText(){
+  if(!lastFetchAt) return "Offline, showing stored reference rates";
+  let when = "";
+  try{ when = new Date(tableStamp || lastFetchAt).toLocaleString(undefined,
+    {hour:"2-digit", minute:"2-digit", day:"numeric", month:"short"}); }catch(e){}
+  return (rateSource === "live" ? "Live quote for " + state.from + "/" + state.to + " · table published " : "Table published ") + (when || "recently");
+}
+
+async function onPairChanged(){
+  els.spark.hidden = true;
+  els.delta.hidden = true;
+  await refreshPair(false);
+  paintSpark(await loadHistory());
+  els.footStamp.textContent = stampText();
+}
+
+function startPolling(){
+  stopPolling();
+  pairTimer  = setInterval(()=>refreshPair(false), PAIR_EVERY);
+  tableTimer = setInterval(()=>refreshTable(false), TABLE_EVERY);
+}
+function stopPolling(){
+  if(pairTimer) clearInterval(pairTimer);
+  if(tableTimer) clearInterval(tableTimer);
+  pairTimer = tableTimer = null;
+}
+
+/* stop pestering the feeds while the tab is in the background */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden){ stopPolling(); }
+  else { startPolling(); refreshPair(false); }
+});
+
+els.status.addEventListener("click", async ()=>{
+  await refreshTable(true);
+  await refreshPair(true);
+  paintSpark(await loadHistory());
+});
+
+setInterval(paintStatus, 1000);
+
+(async function init(){
+  render();
+  runSolve();
+  setStatus("loading", "Fetching rates");
+  await refreshTable(true);
+  await refreshPair(false);
+  paintSpark(await loadHistory());
+  els.footStamp.textContent = stampText();
+  paintStatus();
+  startPolling();
+})();
+</script>
+</script>
+</body>
+</html>
